@@ -1,0 +1,29 @@
+# Operating system and editors
+.DS_Store
+.idea/
+*.swp
+*.swo
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Rust build output
+/target/
+
+# Frontend dependencies and generated output
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Local run data and evidence; committed fixtures belong in examples/ or tests/
+/runs/
+/artifacts/
+/exports/
+*.duckdb
+*.duckdb.wal
+
+# Logs
+*.log

@@ -1,0 +1,14 @@
+[package]
+name = "pipeline-autopsy-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Command line interface for Pipeline Autopsy"
+
+[[bin]]
+name = "pipeline-autopsy"
+path = "src/main.rs"
+
+[dependencies]
+pipeline-autopsy-core.workspace = true

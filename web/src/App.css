@@ -1,0 +1,6 @@
+main { max-width: 960px; margin: 0 auto; padding: 64px 24px; }
+.eyebrow { color: #6ea8fe; font-weight: 600; }
+h1 { font-size: clamp(2rem, 5vw, 3rem); line-height: 1.2; }
+p { color: #a8b5c9; }
+section { margin-top: 40px; padding: 24px; background: #111c2e; border: 1px solid #2a3a52; border-radius: 8px; }
+h2 { margin-top: 0; font-size: 1.25rem; }

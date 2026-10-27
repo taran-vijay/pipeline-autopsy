@@ -1,0 +1,17 @@
+{
+  "name": "pipeline-autopsy",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "web"
+  ],
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "npm run dev --workspace @pipeline-autopsy/web",
+    "build": "npm run build --workspace @pipeline-autopsy/web",
+    "lint": "npm run lint --workspace @pipeline-autopsy/web",
+    "preview": "npm run preview --workspace @pipeline-autopsy/web"
+  }
+}

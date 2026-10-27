@@ -18,8 +18,10 @@ The initial local checkout is at:
 /Users/taranvijay/Downloads/Projects/pipeline-autopsy
 ```
 
-The root Cargo workspace contains `pipeline-autopsy-core` and
-`pipeline-autopsy-cli`. Shared Rust dependencies belong in the root Cargo manifest.
+The root Cargo workspace contains core, API, engine, tracker, contracts, analyzer,
+storage, and CLI crates. See [architecture](architecture.md) for dependency direction
+and [domain models](domain-models.md) for the shared data contract. Shared Rust
+dependencies belong in the root Cargo manifest.
 The root npm workspace contains `@pipeline-autopsy/web`; install frontend
 dependencies from the repository root. Commit both `Cargo.lock` and
 `package-lock.json` to keep dependency resolution reproducible.
@@ -45,7 +47,9 @@ npm run check
 
 The frontend build includes TypeScript checking and writes to `web/dist/`.
 Use `npm run preview` to serve that build locally. Rust output goes in `target/`.
-The CLI startup integration test exercises the compiled executable. The frontend
+The CLI startup integration test exercises the compiled executable. Core model
+tests cover serialization, contract variants, evidence, and invalid input shapes.
+The frontend
 startup test renders the empty runs view in jsdom with Testing Library. Add
 behavior tests as pipeline features arrive.
 
@@ -81,6 +85,14 @@ classes can be used directly in TSX; the startup screen uses `min-h-screen`.
 Existing component styles remain in place. Custom design-system work belongs to
 Track 6.
 
+## T1.4–T1.5 acceptance criteria
+
+- All eight workspace packages build and inherit shared lint rules.
+- Dependencies follow the architecture's inward direction without cycles.
+- Pipeline, Stage, Run, Finding, Contract, and Evidence are serializable core types.
+- JSON Schema export succeeds and the model tests pass.
+- Boundary ownership and validation responsibilities are documented.
+
 ## T1.2–T1.3 acceptance criteria
 
 - Formatting and Clippy checks pass across both Rust crates and test targets.
@@ -105,14 +117,14 @@ git status
 git diff
 ```
 
-New files do not appear in `git diff` until staged. Stage and inspect the tooling changes,
+New files do not appear in `git diff` until staged. Stage and inspect the changes,
 then commit and push:
 
 ```sh
 git add .
 git diff --cached --stat
 git diff --cached
-git commit -m "chore: configure Rust and frontend tooling"
+git commit -m "feat: establish backend boundaries and domain models"
 git push origin main
 ```
 

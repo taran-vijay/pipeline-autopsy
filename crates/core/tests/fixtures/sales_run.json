@@ -1,0 +1,177 @@
+{
+  "id": "run-sales-001",
+  "pipeline": {
+    "schema_version": 1,
+    "id": "sales",
+    "version": "1",
+    "name": "Sales revenue",
+    "stages": [
+      {
+        "id": "orders",
+        "name": "Valid orders",
+        "operation": {
+          "kind": "csv_source",
+          "path": "data/orders.csv"
+        }
+      },
+      {
+        "id": "customers",
+        "name": "Customers",
+        "operation": {
+          "kind": "csv_source",
+          "path": "data/customers.csv"
+        }
+      },
+      {
+        "id": "join_customers",
+        "name": "Join customers",
+        "inputs": [
+          "orders",
+          "customers"
+        ],
+        "operation": {
+          "kind": "sql",
+          "path": "sql/join_customers.sql"
+        }
+      },
+      {
+        "id": "daily_revenue",
+        "name": "Daily revenue",
+        "inputs": [
+          "join_customers"
+        ],
+        "operation": {
+          "kind": "sql",
+          "path": "sql/daily_revenue.sql"
+        }
+      }
+    ],
+    "contracts": [
+      {
+        "id": "customer_coverage",
+        "stage_id": "join_customers",
+        "severity": "error",
+        "rule": {
+          "kind": "join_coverage",
+          "input_stage": "orders",
+          "reference_stage": "customers",
+          "keys": [
+            {
+              "input_column": "customer_id",
+              "reference_column": "customer_id"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "status": "completed",
+  "started_at": "2026-10-27T12:00:00Z",
+  "finished_at": "2026-10-27T12:00:04Z",
+  "stages": [
+    {
+      "stage_id": "orders",
+      "status": "completed",
+      "started_at": "2026-10-27T12:00:00Z",
+      "finished_at": "2026-10-27T12:00:01Z",
+      "duration_ms": 1000,
+      "input_rows": {},
+      "output_rows": 950,
+      "output_schema": null,
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "stage_id": "customers",
+      "status": "completed",
+      "started_at": "2026-10-27T12:00:00Z",
+      "finished_at": "2026-10-27T12:00:01Z",
+      "duration_ms": 1000,
+      "input_rows": {},
+      "output_rows": 100,
+      "output_schema": null,
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "stage_id": "join_customers",
+      "status": "completed",
+      "started_at": "2026-10-27T12:00:00Z",
+      "finished_at": "2026-10-27T12:00:01Z",
+      "duration_ms": 1000,
+      "input_rows": {
+        "orders": 950,
+        "customers": 100
+      },
+      "output_rows": 760,
+      "output_schema": null,
+      "error": null,
+      "skip_reason": null
+    },
+    {
+      "stage_id": "daily_revenue",
+      "status": "completed",
+      "started_at": "2026-10-27T12:00:00Z",
+      "finished_at": "2026-10-27T12:00:01Z",
+      "duration_ms": 1000,
+      "input_rows": {
+        "join_customers": 760
+      },
+      "output_rows": 30,
+      "output_schema": null,
+      "error": null,
+      "skip_reason": null
+    }
+  ],
+  "findings": [
+    {
+      "id": "finding-001",
+      "run_id": "run-sales-001",
+      "stage_id": "join_customers",
+      "contract_id": "customer_coverage",
+      "severity": "error",
+      "conclusion": "confirmed_evidence",
+      "summary": "190 orders have unmatched customer IDs",
+      "explanation": "The inner join excluded orders with no matching customer. Why those customer records are missing is not established.",
+      "expected": {
+        "unmatched_orders": 0
+      },
+      "observed": {
+        "unmatched_orders": 190
+      },
+      "evidence_ids": [
+        "evidence-001"
+      ],
+      "affected_stage_ids": [
+        "daily_revenue"
+      ]
+    }
+  ],
+  "evidence": [
+    {
+      "id": "evidence-001",
+      "run_id": "run-sales-001",
+      "stage_id": "join_customers",
+      "source_stage_ids": [
+        "orders",
+        "customers"
+      ],
+      "query": "SELECT o.* FROM orders o ANTI JOIN customers c ON o.customer_id = c.customer_id",
+      "kind": "unmatched_keys",
+      "data": {
+        "kind": "rows",
+        "total_count": 190,
+        "rows": [
+          {
+            "order_id": 761,
+            "customer_id": "missing-001"
+          },
+          {
+            "order_id": 762,
+            "customer_id": "missing-002"
+          }
+        ]
+      }
+    }
+  ]
+}

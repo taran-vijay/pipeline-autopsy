@@ -12,6 +12,9 @@ path = "src/main.rs"
 
 [dependencies]
 pipeline-autopsy-core.workspace = true
+pipeline-autopsy-engine.workspace = true
+pipeline-autopsy-analyzer.workspace = true
+pipeline-autopsy-storage.workspace = true
 
 [lints]
 workspace = true

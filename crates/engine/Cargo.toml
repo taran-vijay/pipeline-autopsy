@@ -1,0 +1,15 @@
+[package]
+name = "pipeline-autopsy-engine"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Pipeline planning and DuckDB execution for Pipeline Autopsy"
+
+[dependencies]
+pipeline-autopsy-core.workspace = true
+pipeline-autopsy-tracker.workspace = true
+pipeline-autopsy-contracts.workspace = true
+
+[lints]
+workspace = true

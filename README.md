@@ -13,18 +13,27 @@ unmatched orders while treating deliberate filtering and aggregation as expected
 
 ## Status
 
-T1.1–T1.3 establish the Rust Cargo workspace, React/TypeScript Vite frontend,
-and development tooling (rustfmt, Clippy, ESLint, Tailwind CSS, and Vitest).
-The CLI prints a startup message, and the frontend shows an empty runs screen. Pipeline execution, diagnostics, persistence, and the API are
-planned work.
+T1.1–T1.5 establish the Rust workspace, frontend tooling, backend crate boundaries,
+and shared domain models. The CLI prints a startup message, and the frontend shows
+an empty runs screen. Execution, diagnostic services, persistence, and API serving
+are planned work.
+
+See [backend architecture](docs/architecture.md) and
+[shared domain models](docs/domain-models.md) for the current boundaries and types.
 
 ## Repository layout
 
 ```text
-crates/core/   Shared Rust engine library
-crates/cli/    Rust command line entry point
-web/           Vite + React + TypeScript application
-docs/          Development instructions
+crates/core/        Shared domain models
+crates/api/         Local API boundary
+crates/engine/      Execution and planning boundary
+crates/tracker/     Instrumentation boundary
+crates/contracts/   Contract evaluation boundary
+crates/analyzer/    Investigation boundary
+crates/storage/     Persistence boundary
+crates/cli/         Command line entry point
+web/                Vite + React + TypeScript application
+docs/               Architecture, model, and development guides
 ```
 
 ## Quick start

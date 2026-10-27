@@ -1,0 +1,13 @@
+[package]
+name = "pipeline-autopsy-storage"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Metadata and evidence persistence for Pipeline Autopsy"
+
+[dependencies]
+pipeline-autopsy-core.workspace = true
+
+[lints]
+workspace = true

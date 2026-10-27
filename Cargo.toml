@@ -10,3 +10,9 @@ repository = "https://github.com/taran-vijay/pipeline-autopsy"
 
 [workspace.dependencies]
 pipeline-autopsy-core = { path = "crates/core" }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+all = "warn"

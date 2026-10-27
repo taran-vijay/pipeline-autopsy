@@ -13,9 +13,9 @@ unmatched orders while treating deliberate filtering and aggregation as expected
 
 ## Status
 
-T1.1 initializes the monorepo: a Rust Cargo workspace and a Vite frontend using
-React and TypeScript. The CLI prints a startup message, and the frontend shows an
-empty runs screen. Pipeline execution, diagnostics, persistence, and the API are
+T1.1–T1.3 establish the Rust Cargo workspace, React/TypeScript Vite frontend,
+and development tooling (rustfmt, Clippy, ESLint, Tailwind CSS, and Vitest).
+The CLI prints a startup message, and the frontend shows an empty runs screen. Pipeline execution, diagnostics, persistence, and the API are
 planned work.
 
 ## Repository layout
@@ -29,7 +29,7 @@ docs/          Development instructions
 
 ## Quick start
 
-Install stable Rust with Cargo and Node.js 22.12 or newer with npm.
+Install stable Rust with Cargo and Node.js 22.22.2+, 24.15+, or 26+ with npm.
 From the repository root:
 
 ```sh
@@ -44,10 +44,9 @@ Open the local URL printed by Vite. The CLI and frontend currently run independe
 
 ```sh
 cargo fmt --all -- --check
-cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace
-npm run lint
-npm run build
+cargo lint
+cargo test-workspace
+npm run check
 ```
 
 See [the development guide](docs/development.md) for setup and commit instructions.

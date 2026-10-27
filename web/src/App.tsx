@@ -2,7 +2,7 @@ import './App.css'
 
 function App() {
   return (
-    <main>
+    <main className="min-h-screen">
       <p className="eyebrow">Pipeline Autopsy</p>
       <h1>Follow the evidence.</h1>
       <p>Find where your pipeline first went wrong and which outputs may be affected.</p>

@@ -9,7 +9,9 @@ npm ci
 cargo build --workspace --locked
 ```
 
-Use stable Rust (edition 2024 support required), Node.js 22.12 or newer, and npm.
+Use stable Rust (edition 2024 support required), Node.js 22.22.2+, 24.15+, or 26+, and npm.
+The Rust toolchain file selects stable and requests rustfmt and Clippy.
+TypeScript 6 is used for compatibility with the ESLint TypeScript parser.
 The initial local checkout is at:
 
 ```text
@@ -36,15 +38,55 @@ local development URL. There is no backend HTTP service yet.
 
 ```sh
 cargo fmt --all -- --check
-cargo clippy --workspace --all-targets --locked -- -D warnings
-cargo test --workspace --locked
-npm run lint
-npm run build
+cargo lint
+cargo test-workspace
+npm run check
 ```
 
 The frontend build includes TypeScript checking and writes to `web/dist/`.
 Use `npm run preview` to serve that build locally. Rust output goes in `target/`.
-No behavior tests exist yet; add meaningful tests with the pipeline features.
+The CLI startup integration test exercises the compiled executable. The frontend
+startup test renders the empty runs view in jsdom with Testing Library. Add
+behavior tests as pipeline features arrive.
+
+### Rust tooling (T1.2)
+
+- `rust-toolchain.toml` selects stable Rust with rustfmt and Clippy.
+- `rustfmt.toml` sets edition 2024 formatting and four-space indentation.
+- Workspace lints forbid unsafe code and enable the standard Clippy lint group.
+  Each crate inherits them through `[lints] workspace = true`.
+- `cargo lint` runs Clippy for the workspace and all targets, treating warnings
+  as errors. `cargo test-workspace` runs workspace tests with the lockfile.
+
+### Frontend tooling (T1.3)
+
+Run these commands from the repository root:
+
+| Command | Purpose |
+| --- | --- |
+| `npm run typecheck` | Check application, test, and Vite configuration types |
+| `npm run lint` | Run ESLint with TypeScript, React Hooks, and refresh rules |
+| `npm test` | Run Vitest once; failures or missing tests fail the command |
+| `npm run test:watch` | Watch tests during development |
+| `npm run build` | Type-check and produce a Vite build |
+| `npm run check` | Run all frontend checks above, excluding watch mode |
+
+Both TypeScript projects enable strict checking. ESLint uses a flat config in
+`web/eslint.config.js`. Vitest shares the Vite configuration, uses jsdom, and loads
+DOM matchers and component cleanup from `web/src/test/setup.ts`. Tests live beside
+their components as `*.test.tsx`.
+
+Tailwind uses its Vite plugin and the CSS import in `web/src/index.css`. Utility
+classes can be used directly in TSX; the startup screen uses `min-h-screen`.
+Existing component styles remain in place. Custom design-system work belongs to
+Track 6.
+
+## T1.2–T1.3 acceptance criteria
+
+- Formatting and Clippy checks pass across both Rust crates and test targets.
+- `cargo test-workspace` executes the CLI integration test successfully.
+- Strict TypeScript checks, ESLint, Vitest, and the production build all pass.
+- The built CSS includes Tailwind utilities used by the application.
 
 ## T1.1 acceptance criteria
 
@@ -63,14 +105,14 @@ git status
 git diff
 ```
 
-New files do not appear in `git diff` until staged. Stage and inspect the scaffold,
+New files do not appear in `git diff` until staged. Stage and inspect the tooling changes,
 then commit and push:
 
 ```sh
 git add .
 git diff --cached --stat
 git diff --cached
-git commit -m "chore: initialize Rust and Vite monorepo"
+git commit -m "chore: configure Rust and frontend tooling"
 git push origin main
 ```
 

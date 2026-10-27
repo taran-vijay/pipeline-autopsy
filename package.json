@@ -6,12 +6,16 @@
     "web"
   ],
   "engines": {
-    "node": ">=22.12.0"
+    "node": "^22.22.2 || ^24.15.0 || >=26.0.0"
   },
   "scripts": {
     "dev": "npm run dev --workspace @pipeline-autopsy/web",
     "build": "npm run build --workspace @pipeline-autopsy/web",
     "lint": "npm run lint --workspace @pipeline-autopsy/web",
-    "preview": "npm run preview --workspace @pipeline-autopsy/web"
+    "preview": "npm run preview --workspace @pipeline-autopsy/web",
+    "typecheck": "npm run typecheck --workspace @pipeline-autopsy/web",
+    "test": "npm run test --workspace @pipeline-autopsy/web",
+    "test:watch": "npm run test:watch --workspace @pipeline-autopsy/web",
+    "check": "npm run typecheck && npm run lint && npm test && npm run build"
   }
 }

@@ -13,13 +13,13 @@ unmatched orders while treating deliberate filtering and aggregation as expected
 
 ## Status
 
-T1.1–T1.5 establish the Rust workspace, frontend tooling, backend crate boundaries,
-and shared domain models. The CLI prints a startup message, and the frontend shows
-an empty runs screen. Execution, diagnostic services, persistence, and API serving
-are planned work.
+T1.1–T1.7 establish the workspace, tooling, backend boundaries, shared models,
+SQLite migrations, and a versioned API contract. The local API serves health and
+OpenAPI endpoints; the CLI and frontend still show their startup states.
+Pipeline execution, diagnostic services, and business API handlers are planned work.
 
-See [backend architecture](docs/architecture.md) and
-[shared domain models](docs/domain-models.md) for the current boundaries and types.
+See [architecture](docs/architecture.md), [domain models](docs/domain-models.md),
+[storage](docs/storage.md), and [API contract](docs/api.md) for the current foundations.
 
 ## Repository layout
 
@@ -43,11 +43,17 @@ From the repository root:
 
 ```sh
 cargo run -p pipeline-autopsy-cli
+# In a separate terminal, start the local API:
+cargo run -p pipeline-autopsy-api
+# In another terminal, start the frontend:
 npm ci
 npm run dev
 ```
 
-Open the local URL printed by Vite. The CLI and frontend currently run independently.
+Open the local URL printed by Vite. The frontend is not yet connected to the API.
+The API health endpoint is `http://127.0.0.1:3000/api/v1/health`, and the OpenAPI
+artifact is served at `/api/v1/openapi.json`. SQLite metadata is created under
+`runs/metadata.sqlite` and is excluded from Git.
 
 ## Checks
 

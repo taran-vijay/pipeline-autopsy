@@ -33,8 +33,16 @@ cargo run -p pipeline-autopsy-cli
 npm run dev
 ```
 
-The CLI currently prints the core version and scaffold status. Vite prints its
-local development URL. There is no backend HTTP service yet.
+The CLI prints the core version and scaffold status. Vite prints its development
+URL. In a separate terminal, start the foundation API:
+
+```sh
+cargo run -p pipeline-autopsy-api
+```
+
+It initializes SQLite and serves `/api/v1/health` and `/api/v1/openapi.json` on
+`127.0.0.1:3000`. Business handlers are planned. See [storage](storage.md) and
+[API contract](api.md) for configuration and schema export commands.
 
 ## Verify
 
@@ -49,8 +57,9 @@ The frontend build includes TypeScript checking and writes to `web/dist/`.
 Use `npm run preview` to serve that build locally. Rust output goes in `target/`.
 The CLI startup integration test exercises the compiled executable. Core model
 tests cover serialization, contract variants, evidence, and invalid input shapes.
-The frontend
-startup test renders the empty runs view in jsdom with Testing Library. Add
+Storage tests exercise actual migrations, database reopening, and constraints.
+API tests cover the generated specification, wire types, and HTTP behavior.
+The frontend startup test renders the empty runs view in jsdom with Testing Library. Add
 behavior tests as pipeline features arrive.
 
 ### Rust tooling (T1.2)
@@ -84,6 +93,15 @@ Tailwind uses its Vite plugin and the CSS import in `web/src/index.css`. Utility
 classes can be used directly in TSX; the startup screen uses `min-h-screen`.
 Existing component styles remain in place. Custom design-system work belongs to
 Track 6.
+
+## T1.6–T1.7 acceptance criteria
+
+- SQLite opens with per-connection foreign keys and applies embedded migrations.
+- Reopening preserves records; applying the same migration again is safe.
+- Constraints enforce run isolation, valid states/counts, and revision integrity.
+- OpenAPI is generated from Rust wire models and the committed artifact stays current.
+- The local API starts after migration and serves health/specification responses.
+- HTTP errors use the documented problem-details format.
 
 ## T1.4–T1.5 acceptance criteria
 
@@ -124,7 +142,7 @@ then commit and push:
 git add .
 git diff --cached --stat
 git diff --cached
-git commit -m "feat: establish backend boundaries and domain models"
+git commit -m "feat: add SQLite migrations and OpenAPI contract"
 git push origin main
 ```
 

@@ -71,8 +71,8 @@ investigator is responsible for bounded capture and storage for retention.
 Deserialization does not impose a sample-size cap or cross-record consistency.
 Schema evidence contains expected and observed column definitions. JSON values
 support nulls; encode large integers and decimals as strings when clients cannot
-represent their precision safely. Transport DTOs must address JSON-safe numeric
-representation before API integration.
+represent their precision safely. API DTOs use decimal strings for unsigned counts/durations and normalize unsafe
+record integers; see [the API contract](api.md).
 
 ## Example and schema export
 

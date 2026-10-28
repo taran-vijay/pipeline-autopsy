@@ -12,5 +12,16 @@ pipeline-autopsy-engine.workspace = true
 pipeline-autopsy-analyzer.workspace = true
 pipeline-autopsy-storage.workspace = true
 
+axum.workspace = true
+tokio.workspace = true
+sqlx.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+schemars.workspace = true
+chrono.workspace = true
+
+[dev-dependencies]
+tower.workspace = true
+
 [lints]
 workspace = true

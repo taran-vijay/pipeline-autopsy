@@ -1,0 +1,1595 @@
+{
+  "components": {
+    "responses": {
+      "Conflict": {
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        },
+        "description": "Revision already registered or run state conflicts with the operation"
+      },
+      "InternalError": {
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        },
+        "description": "Unexpected internal failure; private details are not exposed"
+      },
+      "InvalidRequest": {
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        },
+        "description": "Malformed JSON, parameters, or cursor"
+      },
+      "MethodNotAllowed": {
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        },
+        "description": "Method unsupported; Allow lists supported methods",
+        "headers": {
+          "Allow": {
+            "description": "Supported methods",
+            "schema": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        },
+        "description": "Resource does not exist in the requested scope"
+      },
+      "NotImplemented": {
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        },
+        "description": "Reserved operation is not implemented"
+      },
+      "StorageUnavailable": {
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        },
+        "description": "Metadata storage is unavailable"
+      },
+      "ValidationFailed": {
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        },
+        "description": "Decoded input violates semantic constraints"
+      }
+    },
+    "schemas": {
+      "ColumnSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "data_type": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "nullable": {
+            "description": "None means nullability was not measured.",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "data_type"
+        ],
+        "type": "object"
+      },
+      "Conclusion": {
+        "description": "Confidence in the stated explanation; confirmed evidence is not proof of\nthe ultimate upstream business cause.",
+        "enum": [
+          "confirmed_evidence",
+          "suspected_cause",
+          "inconclusive"
+        ],
+        "type": "string"
+      },
+      "Contract": {
+        "additionalProperties": false,
+        "description": "An explicit expectation attached to a stage's output.",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "rule": {
+            "$ref": "#/components/schemas/ContractRule"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/Severity"
+          },
+          "stage_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "stage_id",
+          "severity",
+          "rule"
+        ],
+        "type": "object"
+      },
+      "ContractRule": {
+        "description": "Rule definitions only; evaluation and semantic validation arrive in Track 4.",
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "columns": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "kind": {
+                "const": "required_columns",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "columns"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "description": "Column names mapped to expected engine type names, e.g. BIGINT.",
+            "properties": {
+              "columns": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "kind": {
+                "const": "column_types",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "columns"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "columns": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "kind": {
+                "const": "not_null",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "columns"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "description": "The combination of columns must be unique.",
+            "properties": {
+              "columns": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "kind": {
+                "const": "unique",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "columns"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "description": "Evaluate coverage of an input against a referenced stage, including rows\nthat a lossy join may have removed from this contract's output stage.",
+            "properties": {
+              "input_stage": {
+                "type": "string"
+              },
+              "keys": {
+                "items": {
+                  "$ref": "#/components/schemas/JoinKey"
+                },
+                "type": "array"
+              },
+              "kind": {
+                "const": "join_coverage",
+                "type": "string"
+              },
+              "reference_stage": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "input_stage",
+              "reference_stage",
+              "keys"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "description": "(input rows - output rows) / input rows, clamped at zero.\nMust be finite and within [0, 1]. Empty inputs pass. Evaluator enforces it.",
+            "properties": {
+              "input_stage": {
+                "type": "string"
+              },
+              "kind": {
+                "const": "row_loss",
+                "type": "string"
+              },
+              "max_loss_ratio": {
+                "format": "double",
+                "type": "number"
+              }
+            },
+            "required": [
+              "kind",
+              "input_stage",
+              "max_loss_ratio"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "CreateRunRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "pipeline_version": {
+            "description": "Run the exact registered revision; never silently substitute a newer one.",
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "pipeline_version"
+        ],
+        "type": "object"
+      },
+      "DecimalU64": {
+        "description": "Unsigned decimal in [0, 18446744073709551615]; returned as a string for lossless JavaScript handling.",
+        "pattern": "^(0|[1-9][0-9]{0,19})$",
+        "type": "string"
+      },
+      "ErrorCode": {
+        "enum": [
+          "invalid_request",
+          "validation_failed",
+          "not_found",
+          "conflict",
+          "method_not_allowed",
+          "not_implemented",
+          "storage_unavailable",
+          "internal_error"
+        ],
+        "type": "string"
+      },
+      "EvidenceKind": {
+        "enum": [
+          "unmatched_keys",
+          "duplicate_keys",
+          "schema_drift"
+        ],
+        "type": "string"
+      },
+      "EvidenceResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/EvidenceResponseData"
+          },
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/EvidenceKind"
+          },
+          "query": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "run_id": {
+            "type": "string"
+          },
+          "source_stage_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "stage_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "run_id",
+          "stage_id",
+          "source_stage_ids",
+          "kind",
+          "data"
+        ],
+        "type": "object"
+      },
+      "EvidenceResponseData": {
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "rows",
+                "type": "string"
+              },
+              "rows": {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "total_count": {
+                "$ref": "#/components/schemas/DecimalU64"
+              }
+            },
+            "required": [
+              "kind",
+              "total_count",
+              "rows"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "expected": {
+                "items": {
+                  "$ref": "#/components/schemas/ColumnSchema"
+                },
+                "type": "array"
+              },
+              "kind": {
+                "const": "schema_diff",
+                "type": "string"
+              },
+              "observed": {
+                "items": {
+                  "$ref": "#/components/schemas/ColumnSchema"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "kind",
+              "expected",
+              "observed"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "ExecutionError": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "type": "object"
+      },
+      "FieldError": {
+        "additionalProperties": false,
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "pointer": {
+            "description": "JSON pointer into the request, e.g. /stages/0/inputs.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pointer",
+          "message"
+        ],
+        "type": "object"
+      },
+      "Finding": {
+        "additionalProperties": false,
+        "properties": {
+          "affected_stage_ids": {
+            "default": [],
+            "description": "Potentially impacted outputs, not automatically additional root causes.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "conclusion": {
+            "$ref": "#/components/schemas/Conclusion"
+          },
+          "contract_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "evidence_ids": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "expected": true,
+          "explanation": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "observed": true,
+          "run_id": {
+            "type": "string"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/Severity"
+          },
+          "stage_id": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "run_id",
+          "stage_id",
+          "severity",
+          "conclusion",
+          "summary",
+          "explanation",
+          "expected",
+          "observed"
+        ],
+        "type": "object"
+      },
+      "FindingPage": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Finding"
+            },
+            "type": "array"
+          },
+          "next_cursor": {
+            "description": "Opaque continuation token. Null marks the end of the result set.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
+      "Health": {
+        "additionalProperties": false,
+        "properties": {
+          "database_schema_version": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/HealthStatus"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "version",
+          "database_schema_version"
+        ],
+        "type": "object"
+      },
+      "HealthStatus": {
+        "enum": [
+          "ok"
+        ],
+        "type": "string"
+      },
+      "JoinKey": {
+        "additionalProperties": false,
+        "properties": {
+          "input_column": {
+            "type": "string"
+          },
+          "reference_column": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "input_column",
+          "reference_column"
+        ],
+        "type": "object"
+      },
+      "Pipeline": {
+        "additionalProperties": false,
+        "description": "A versioned definition. DAG and reference validation belongs to the planner.",
+        "properties": {
+          "contracts": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/Contract"
+            },
+            "type": "array"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "schema_version": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "stages": {
+            "items": {
+              "$ref": "#/components/schemas/Stage"
+            },
+            "type": "array"
+          },
+          "version": {
+            "description": "User-controlled pipeline revision, distinct from the model schema version.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "id",
+          "version",
+          "name",
+          "stages"
+        ],
+        "type": "object"
+      },
+      "PipelinePage": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Pipeline"
+            },
+            "type": "array"
+          },
+          "next_cursor": {
+            "description": "Opaque continuation token. Null marks the end of the result set.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
+      "Problem": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/FieldError"
+            },
+            "type": "array"
+          },
+          "instance": {
+            "description": "URI reference identifying an occurrence; omitted if none was allocated.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "format": "uint16",
+            "maximum": 65535,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "status",
+          "detail",
+          "code"
+        ],
+        "type": "object"
+      },
+      "RunDetail": {
+        "additionalProperties": false,
+        "properties": {
+          "pipeline": {
+            "$ref": "#/components/schemas/Pipeline"
+          },
+          "stages": {
+            "items": {
+              "$ref": "#/components/schemas/StageResponse"
+            },
+            "type": "array"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/RunSummary"
+          }
+        },
+        "required": [
+          "summary",
+          "pipeline",
+          "stages"
+        ],
+        "type": "object"
+      },
+      "RunPage": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RunSummary"
+            },
+            "type": "array"
+          },
+          "next_cursor": {
+            "description": "Opaque continuation token. Null marks the end of the result set.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
+      "RunStatus": {
+        "enum": [
+          "pending",
+          "running",
+          "completed",
+          "failed",
+          "cancelled"
+        ],
+        "type": "string"
+      },
+      "RunSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "finished_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "pipeline_id": {
+            "type": "string"
+          },
+          "pipeline_version": {
+            "type": "string"
+          },
+          "started_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/RunStatus"
+          }
+        },
+        "required": [
+          "id",
+          "pipeline_id",
+          "pipeline_version",
+          "status"
+        ],
+        "type": "object"
+      },
+      "Severity": {
+        "enum": [
+          "information",
+          "warning",
+          "error"
+        ],
+        "type": "string"
+      },
+      "Stage": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "inputs": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "name": {
+            "type": "string"
+          },
+          "operation": {
+            "$ref": "#/components/schemas/StageOperation"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "operation"
+        ],
+        "type": "object"
+      },
+      "StageOperation": {
+        "description": "File paths are relative to the pipeline definition directory.",
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "csv_source",
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "path"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "sql",
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "path"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "StageResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "duration_ms": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DecimalU64"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExecutionError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "finished_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "input_rows": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/DecimalU64"
+            },
+            "type": "object"
+          },
+          "output_rows": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DecimalU64"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "output_schema": {
+            "items": {
+              "$ref": "#/components/schemas/ColumnSchema"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "skip_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "stage_id": {
+            "type": "string"
+          },
+          "started_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/StageStatus"
+          }
+        },
+        "required": [
+          "stage_id",
+          "status",
+          "input_rows"
+        ],
+        "type": "object"
+      },
+      "StageStatus": {
+        "description": "Execution status is distinct from contract outcomes: a completed SQL stage\ncan still violate a contract and produce findings.",
+        "enum": [
+          "pending",
+          "running",
+          "completed",
+          "failed",
+          "skipped",
+          "cancelled"
+        ],
+        "type": "string"
+      }
+    }
+  },
+  "info": {
+    "description": "Foundation contract. Only health and this specification are implemented. Planned operations have no handlers yet and return the router's standard 404 until implemented. Counts and durations use decimal strings; arbitrary diagnostic values encode unsafe integers and exact decimals as strings.",
+    "title": "Pipeline Autopsy local API",
+    "version": "0.1.0"
+  },
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "openapi": "3.1.1",
+  "paths": {
+    "/api/v1/health": {
+      "get": {
+        "operationId": "getHealth",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            },
+            "description": "Successful response"
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "405": {
+            "$ref": "#/components/responses/MethodNotAllowed"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/StorageUnavailable"
+          }
+        },
+        "summary": "Check API and migrated metadata availability",
+        "x-implementation-status": "implemented"
+      }
+    },
+    "/api/v1/openapi.json": {
+      "get": {
+        "operationId": "getOpenApi",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OpenAPI 3.1.1 document"
+          },
+          "405": {
+            "$ref": "#/components/responses/MethodNotAllowed"
+          }
+        },
+        "summary": "Retrieve this specification",
+        "x-implementation-status": "implemented"
+      }
+    },
+    "/api/v1/pipelines": {
+      "get": {
+        "operationId": "listPipelineRevisions",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PipelinePage"
+                }
+              }
+            },
+            "description": "Successful response"
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "405": {
+            "$ref": "#/components/responses/MethodNotAllowed"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "501": {
+            "$ref": "#/components/responses/NotImplemented"
+          },
+          "503": {
+            "$ref": "#/components/responses/StorageUnavailable"
+          }
+        },
+        "summary": "List registered pipeline revisions",
+        "x-implementation-status": "planned"
+      },
+      "post": {
+        "operationId": "registerPipeline",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Pipeline"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pipeline"
+                }
+              }
+            },
+            "description": "Successful response"
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "405": {
+            "$ref": "#/components/responses/MethodNotAllowed"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "501": {
+            "$ref": "#/components/responses/NotImplemented"
+          },
+          "503": {
+            "$ref": "#/components/responses/StorageUnavailable"
+          }
+        },
+        "summary": "Register an immutable pipeline revision",
+        "x-implementation-status": "planned"
+      }
+    },
+    "/api/v1/pipelines/{pipeline_id}/runs": {
+      "post": {
+        "operationId": "createRun",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pipeline_id",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunSummary"
+                }
+              }
+            },
+            "description": "Run accepted; poll the run resource for progress",
+            "headers": {
+              "Location": {
+                "description": "Relative URI of the new run",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "405": {
+            "$ref": "#/components/responses/MethodNotAllowed"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "501": {
+            "$ref": "#/components/responses/NotImplemented"
+          },
+          "503": {
+            "$ref": "#/components/responses/StorageUnavailable"
+          }
+        },
+        "summary": "Queue execution of an exact registered revision",
+        "x-implementation-status": "planned"
+      }
+    },
+    "/api/v1/pipelines/{pipeline_id}/versions/{pipeline_version}": {
+      "get": {
+        "operationId": "getPipelineRevision",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pipeline_id",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "pipeline_version",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pipeline"
+                }
+              }
+            },
+            "description": "Successful response"
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "405": {
+            "$ref": "#/components/responses/MethodNotAllowed"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "501": {
+            "$ref": "#/components/responses/NotImplemented"
+          },
+          "503": {
+            "$ref": "#/components/responses/StorageUnavailable"
+          }
+        },
+        "summary": "Retrieve an exact registered pipeline revision",
+        "x-implementation-status": "planned"
+      }
+    },
+    "/api/v1/runs": {
+      "get": {
+        "operationId": "listRuns",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "pipeline_id",
+            "required": false,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "$ref": "#/components/schemas/RunStatus"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunPage"
+                }
+              }
+            },
+            "description": "Successful response"
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "405": {
+            "$ref": "#/components/responses/MethodNotAllowed"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "501": {
+            "$ref": "#/components/responses/NotImplemented"
+          },
+          "503": {
+            "$ref": "#/components/responses/StorageUnavailable"
+          }
+        },
+        "summary": "List recorded runs",
+        "x-implementation-status": "planned"
+      }
+    },
+    "/api/v1/runs/{run_id}": {
+      "get": {
+        "operationId": "getRun",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunDetail"
+                }
+              }
+            },
+            "description": "Successful response"
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "405": {
+            "$ref": "#/components/responses/MethodNotAllowed"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "501": {
+            "$ref": "#/components/responses/NotImplemented"
+          },
+          "503": {
+            "$ref": "#/components/responses/StorageUnavailable"
+          }
+        },
+        "summary": "Retrieve a run snapshot and stage metadata",
+        "x-implementation-status": "planned"
+      }
+    },
+    "/api/v1/runs/{run_id}/evidence/{evidence_id}": {
+      "get": {
+        "operationId": "getEvidence",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "evidence_id",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvidenceResponse"
+                }
+              }
+            },
+            "description": "Successful response"
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "405": {
+            "$ref": "#/components/responses/MethodNotAllowed"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "501": {
+            "$ref": "#/components/responses/NotImplemented"
+          },
+          "503": {
+            "$ref": "#/components/responses/StorageUnavailable"
+          }
+        },
+        "summary": "Retrieve captured evidence; rows are a stored sample",
+        "x-implementation-status": "planned"
+      }
+    },
+    "/api/v1/runs/{run_id}/findings": {
+      "get": {
+        "operationId": "listFindings",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FindingPage"
+                }
+              }
+            },
+            "description": "Successful response"
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "405": {
+            "$ref": "#/components/responses/MethodNotAllowed"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "501": {
+            "$ref": "#/components/responses/NotImplemented"
+          },
+          "503": {
+            "$ref": "#/components/responses/StorageUnavailable"
+          }
+        },
+        "summary": "List findings scoped to a run",
+        "x-implementation-status": "planned"
+      }
+    },
+    "/api/v1/runs/{run_id}/stages/{stage_id}": {
+      "get": {
+        "operationId": "getStage",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "stage_id",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StageResponse"
+                }
+              }
+            },
+            "description": "Successful response"
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "405": {
+            "$ref": "#/components/responses/MethodNotAllowed"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "501": {
+            "$ref": "#/components/responses/NotImplemented"
+          },
+          "503": {
+            "$ref": "#/components/responses/StorageUnavailable"
+          }
+        },
+        "summary": "Retrieve a stage execution record",
+        "x-implementation-status": "planned"
+      }
+    }
+  },
+  "servers": [
+    {
+      "description": "Default local API; port is configurable",
+      "url": "http://127.0.0.1:3000"
+    }
+  ]
+}

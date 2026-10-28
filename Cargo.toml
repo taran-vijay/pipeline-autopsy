@@ -30,6 +30,13 @@ serde_json = "1"
 schemars = { version = "1", features = ["chrono04"] }
 chrono = { version = "0.4", default-features = false, features = ["std", "serde"] }
 
+sqlx = { version = "0.9", default-features = false, features = ["runtime-tokio", "sqlite", "migrate", "macros"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "signal", "fs"] }
+axum = "0.8"
+thiserror = "2"
+tower = { version = "0.5", features = ["util"] }
+tempfile = "3"
+
 [workspace.lints.rust]
 unsafe_code = "forbid"
 

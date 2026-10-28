@@ -1,8 +1,8 @@
 # Backend architecture
 
 T1.4 establishes eight Cargo packages, keeping the existing `crates/core` and
-`crates/cli` names. The six additional packages reserve their implementation
-boundaries; they currently contain library documentation and dependency manifests.
+`crates/cli` names. T1.6–T1.7 implement storage initialization/migrations and a minimal API host;
+the engine, tracker, contracts, and analyzer remain implementation boundaries.
 
 | Crate | Ownership | Direct workspace dependencies |
 | --- | --- | --- |
@@ -59,7 +59,8 @@ consumer is implemented, avoiding placeholder service APIs.
 
 ## Current scope
 
-T1.5 implements the shared [domain models](domain-models.md). The transport and
-service crates are buildable shells. Axum/Tokio, DuckDB, petgraph, and SQLx will be
-introduced alongside their implementations. The API server, database schema,
-OpenAPI contract, and CI are later tasks (T1.6–T1.8 and Track 2 onward).
+T1.5 implements the shared [domain models](domain-models.md). T1.6 adds SQLx/SQLite
+[metadata storage](storage.md), and T1.7 adds an Axum/Tokio host and the
+[OpenAPI contract](api.md). Health and specification endpoints are implemented;
+business endpoints are planned. DuckDB, petgraph, repositories, and execution/
+analysis services remain later work. CI belongs to T1.8.

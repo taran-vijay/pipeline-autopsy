@@ -1,8 +1,9 @@
 # Backend architecture
 
-T1.4 establishes eight Cargo packages, keeping the existing `crates/core` and
-`crates/cli` names. T1.6–T1.7 implement storage initialization/migrations and a minimal API host;
-the engine, tracker, contracts, and analyzer remain implementation boundaries.
+The backend has eight Cargo packages. Shared domain records live in core, storage
+owns SQLite initialization/migrations, and the API provides the local host and
+versioned contract. The engine, tracker, contracts, and analyzer currently reserve
+their implementation boundaries.
 
 | Crate | Ownership | Direct workspace dependencies |
 | --- | --- | --- |
@@ -57,10 +58,50 @@ be reviewed against this direction; Cargo rejects dependency cycles. Concrete
 repository interfaces and engine adapters will be defined when their first real
 consumer is implemented, avoiding placeholder service APIs.
 
+## Runtime and data flow
+
+The application currently runs on the user's computer. A React/Vite frontend is
+opened in the browser, and the Axum/Tokio process serves a local HTTP API. The
+frontend is not yet integrated with the API. A future Tauri adapter can provide a
+desktop window over the same domain/service boundaries.
+
+Implemented API startup is:
+
+```text
+API process → create metadata directory → open SQLite pool
+            → apply/validate embedded SQLx migrations → bind loopback listener
+            → serve health and OpenAPI → graceful shutdown → close pool
+```
+
+Health reads the migrated database version. HTTP failures use the API's problem-
+details adapter; raw SQL/database errors remain inside the storage boundary.
+The OpenAPI document is generated from the same wire models the API crate owns.
+Counts/durations use decimal-string transport DTOs to preserve u64 precision in
+JavaScript; the core model and SQLite storage representations are separate.
+
+The intended execution/investigation path for later tracks is:
+
+```text
+Pipeline definition + CSV/SQL files
+  → engine validates/plans DAG and executes SQL in DuckDB
+  → tracker captures stage lifecycle, counts, schema, and timing
+  → contracts evaluates explicit expectations
+  → storage persists run snapshots, checks, findings, and bounded evidence
+  → analyzer investigates violations and traverses downstream impact
+  → API/CLI present recorded results; frontend inspects them
+```
+
+This is a design boundary, not a claim that execution works today. DuckDB owns
+intermediate execution data; SQLite owns persistent metadata. Historical
+inspection should read stored records rather than rerun input queries. The
+synthetic sales fixture documents the intended 190-order diagnosis.
+
 ## Current scope
 
 T1.5 implements the shared [domain models](domain-models.md). T1.6 adds SQLx/SQLite
 [metadata storage](storage.md), and T1.7 adds an Axum/Tokio host and the
 [OpenAPI contract](api.md). Health and specification endpoints are implemented;
 business endpoints are planned. DuckDB, petgraph, repositories, and execution/
-analysis services remain later work. CI belongs to T1.8.
+analysis services remain later work. [CI](ci.md) checks Rust and frontend builds
+and tests. [Development](development.md) documents clean setup and operation.
+These complete T1.8–T1.9; pipeline execution begins in Track 2.

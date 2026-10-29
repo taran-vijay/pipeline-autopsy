@@ -1,70 +1,114 @@
 # Pipeline Autopsy
 
 Debug data pipelines with stage-level checks, evidence-backed root-cause analysis,
-and an interactive lineage dashboard.
-
-## The problem
+and an interactive lineage workbench.
 
 A pipeline can finish successfully while silently losing records. Pipeline Autopsy
 will show where an expectation first failed, explain the evidence, and identify
-potentially affected downstream outputs. In the canonical sales example, 950 valid
-orders become 760 after a customer join: the investigation should explain the 190
-unmatched orders while treating deliberate filtering and aggregation as expected.
+potentially affected downstream outputs. The canonical example follows 950 valid
+orders through a customer join that leaves 760: an investigation should identify
+the 190 unmatched orders while treating expected filtering and aggregation normally.
 
-## Status
+## Current status
 
-T1.1–T1.7 establish the workspace, tooling, backend boundaries, shared models,
-SQLite migrations, and a versioned API contract. The local API serves health and
-OpenAPI endpoints; the CLI and frontend still show their startup states.
-Pipeline execution, diagnostic services, and business API handlers are planned work.
+Track 1 (T1.1–T1.9) establishes the project foundation:
 
-See [architecture](docs/architecture.md), [domain models](docs/domain-models.md),
-[storage](docs/storage.md), and [API contract](docs/api.md) for the current foundations.
+- Eight Rust workspace crates and shared domain models.
+- SQLite metadata schema and automatic, embedded migrations.
+- An Axum API serving health and the generated OpenAPI specification.
+- A React/TypeScript/Vite frontend with Tailwind, ESLint, and Vitest.
+- GitHub Actions checks for Rust and frontend builds/tests.
 
-## Repository layout
+The CLI prints a startup message, and the frontend shows an empty runs screen.
+Pipeline execution, diagnostics, repository save/load methods, and business API
+handlers are planned. The 190-order investigation is currently a synthetic model
+test fixture. It is not yet an executable demo.
 
-```text
-crates/core/        Shared domain models
-crates/api/         Local API boundary
-crates/engine/      Execution and planning boundary
-crates/tracker/     Instrumentation boundary
-crates/contracts/   Contract evaluation boundary
-crates/analyzer/    Investigation boundary
-crates/storage/     Persistence boundary
-crates/cli/         Command line entry point
-web/                Vite + React + TypeScript application
-docs/               Architecture, model, and development guides
-```
+Development currently runs locally in a browser alongside a Rust service. Tauri
+packaging is a future desktop option. No hosted service or cloud account is needed.
 
-## Quick start
+## Prerequisites
 
-Install stable Rust with Cargo and Node.js 22.22.2+, 24.15+, or 26+ with npm.
-From the repository root:
+- Stable Rust installed through [rustup](https://rustup.rs/), including a platform
+  C compiler/linker. `rust-toolchain.toml` selects stable, rustfmt, and Clippy.
+- Node.js **26.10.0**, matching `.node-version`, with npm. Compatible alternatives
+  are listed in `package.json`, but CI uses the pinned version.
+- Git. A separate SQLite installation and SQLx CLI are not required.
+
+See [local setup](docs/development.md) for platform requirements and troubleshooting.
+
+## Setup and run
 
 ```sh
-cargo run -p pipeline-autopsy-cli
-# In a separate terminal, start the local API:
-cargo run -p pipeline-autopsy-api
-# In another terminal, start the frontend:
+git clone https://github.com/taran-vijay/pipeline-autopsy.git
+cd pipeline-autopsy
 npm ci
+cargo build --workspace --locked
+```
+
+Start the API in one terminal:
+
+```sh
+cargo run -p pipeline-autopsy-api --locked
+```
+
+It migrates `runs/metadata.sqlite` automatically and serves:
+
+- [Health](http://127.0.0.1:3000/api/v1/health)
+- [OpenAPI specification](http://127.0.0.1:3000/api/v1/openapi.json)
+
+Start the frontend in another terminal, from the same repository root:
+
+```sh
 npm run dev
 ```
 
-Open the local URL printed by Vite. The frontend is not yet connected to the API.
-The API health endpoint is `http://127.0.0.1:3000/api/v1/health`, and the OpenAPI
-artifact is served at `/api/v1/openapi.json`. SQLite metadata is created under
-`runs/metadata.sqlite` and is excluded from Git.
+Open the URL Vite prints (normally `http://localhost:5173`). The frontend is not yet
+connected to the API. Ctrl-C stops either service. To inspect the CLI scaffold:
 
-## Checks
+```sh
+cargo run -p pipeline-autopsy-cli --locked
+```
+
+## Verify
 
 ```sh
 cargo fmt --all -- --check
+cargo build --workspace --locked
 cargo lint
 cargo test-workspace
 npm run check
 ```
 
-See [the development guide](docs/development.md) for setup and commit instructions.
+CI runs these checks on pull requests and pushes to `main`. The first hosted run
+starts after the workflow is pushed; see [CI details](docs/ci.md).
+
+## Repository guide
+
+```text
+crates/core/        Shared domain models
+crates/api/         Local API host and versioned contract
+crates/storage/     SQLite connections, schema, and migrations
+crates/engine/      Execution and planning boundary
+crates/tracker/     Instrumentation boundary
+crates/contracts/   Contract evaluation boundary
+crates/analyzer/    Investigation boundary
+crates/cli/         Command line entry point
+web/                React + TypeScript application
+schemas/            Generated OpenAPI artifact
+.github/workflows/  Continuous integration
+docs/               Architecture and contributor documentation
+```
+
+| Guide | Contents |
+| --- | --- |
+| [Development](docs/development.md) | Setup, running services, checks, troubleshooting |
+| [Architecture](docs/architecture.md) | Boundaries, dependency direction, runtime flow |
+| [Domain models](docs/domain-models.md) | Shared records, serialization, semantics |
+| [Storage](docs/storage.md) | Database schema, migration rules, integrity |
+| [API](docs/api.md) | Implemented/planned routes, wire types, errors |
+| [CI](docs/ci.md) | Triggers, jobs, local equivalents, first-run expectations |
+| [Contributing](CONTRIBUTING.md) | Change and review workflow |
 
 ## License
 

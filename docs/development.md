@@ -1,6 +1,32 @@
 # Development
 
-## Setup
+## Prerequisites
+
+Install Git, stable Rust through [rustup](https://rustup.rs/), and Node.js 26.10.0
+with npm. `.node-version` records the Node version used in CI. Use your preferred
+Node version manager, or install that version directly. Verify `node --version`
+before installing dependencies. Other supported runtime ranges are recorded in
+`package.json`; dependency compatibility is checked by npm.
+
+The workspace uses Rust edition 2024. `rust-toolchain.toml` selects stable and
+requests rustfmt and Clippy. Because stable advances, build output can change after
+a toolchain update even while `Cargo.lock` stays fixed. CI prints the installed
+toolchain during setup and checks the same channel.
+
+A native build toolchain is needed for Rust linking and the bundled SQLite build:
+
+| Platform | Requirement |
+| --- | --- |
+| macOS | Xcode Command Line Tools (`xcode-select --install`) |
+| Ubuntu/Debian | C compiler/linker and make (`build-essential`) |
+| Windows | Rust MSVC toolchain and Visual Studio C++ Build Tools with Windows SDK |
+
+These are platform prerequisites, not extra project services. SQLite is bundled by
+SQLx; no database server, SQLite command line program, or SQLx CLI is required.
+The application is developed on macOS; CI currently verifies Linux. Windows and
+additional platforms are not yet part of the test matrix.
+
+## Clean setup
 
 ```sh
 git clone https://github.com/taran-vijay/pipeline-autopsy.git
@@ -9,142 +35,159 @@ npm ci
 cargo build --workspace --locked
 ```
 
-Use stable Rust (edition 2024 support required), Node.js 22.22.2+, 24.15+, or 26+, and npm.
-The Rust toolchain file selects stable and requests rustfmt and Clippy.
-TypeScript 6 is used for compatibility with the ESLint TypeScript parser.
-The initial local checkout is at:
+Run all commands below from the repository root. Both dependency lockfiles are
+committed. `npm ci` installs the frontend from the root npm workspace and fails if
+package manifests and lockfile disagree. Rust builds use `--locked` to reject
+unexpected lockfile changes. No secrets or environment file are needed.
 
-```text
-/Users/taranvijay/Downloads/Projects/pipeline-autopsy
-```
+The eight Cargo packages share dependencies and lint rules from `Cargo.toml`.
+The npm workspace contains `@pipeline-autopsy/web`. Add frontend dependencies from
+the root, for example `npm install <package> --workspace @pipeline-autopsy/web`,
+and review the resulting manifest and lockfile changes.
 
-The root Cargo workspace contains core, API, engine, tracker, contracts, analyzer,
-storage, and CLI crates. See [architecture](architecture.md) for dependency direction
-and [domain models](domain-models.md) for the shared data contract. Shared Rust
-dependencies belong in the root Cargo manifest.
-The root npm workspace contains `@pipeline-autopsy/web`; install frontend
-dependencies from the repository root. Commit both `Cargo.lock` and
-`package-lock.json` to keep dependency resolution reproducible.
+## Run locally
 
-## Run
+In the API terminal:
 
 ```sh
-cargo run -p pipeline-autopsy-cli
+cargo run -p pipeline-autopsy-api --locked
+```
+
+Startup creates the metadata directory, opens SQLite, validates/applies embedded
+migrations, and binds to `127.0.0.1:3000`. It prints its address and database path.
+A migration or connection failure stops startup. The implemented endpoints are:
+
+```text
+GET http://127.0.0.1:3000/api/v1/health
+GET http://127.0.0.1:3000/api/v1/openapi.json
+```
+
+A healthy response includes `status: "ok"`, the application version, and
+`database_schema_version: 1`. You can open the URLs in your browser, or verify from
+a terminal with:
+
+```sh
+curl --fail http://127.0.0.1:3000/api/v1/health
+```
+
+In another terminal, from the same root:
+
+```sh
 npm run dev
 ```
 
-The CLI prints the core version and scaffold status. Vite prints its development
-URL. In a separate terminal, start the foundation API:
+Open the URL printed by Vite; its default port is 5173. The empty pipeline-runs
+screen is expected. It does not yet request API data. The API and UI are separate
+processes; use Ctrl-C in each terminal to stop them.
+
+The command line scaffold is independent:
 
 ```sh
-cargo run -p pipeline-autopsy-api
+cargo run -p pipeline-autopsy-cli --locked
 ```
 
-It initializes SQLite and serves `/api/v1/health` and `/api/v1/openapi.json` on
-`127.0.0.1:3000`. Business handlers are planned. See [storage](storage.md) and
-[API contract](api.md) for configuration and schema export commands.
+It prints the shared core version. No pipeline execution command exists yet.
 
-## Verify
+## Configuration and generated files
+
+| Setting/path | Default and behavior |
+| --- | --- |
+| `PIPELINE_AUTOPSY_DATABASE` | `runs/metadata.sqlite`, relative to the working directory |
+| `PIPELINE_AUTOPSY_PORT` | `3000`; listener stays on IPv4 loopback |
+| `runs/` | Ignored local metadata; do not delete if you need the run history |
+| `target/` | Ignored Rust build output |
+| `node_modules/`, `web/node_modules/` | Ignored installed dependencies and tool caches |
+| `web/dist/` | Ignored production frontend build |
+
+Environment overrides must be set in the terminal launching the API. For example,
+in macOS/Linux shells:
+
+```sh
+PIPELINE_AUTOPSY_PORT=3001 cargo run -p pipeline-autopsy-api --locked
+```
+
+In PowerShell:
+
+```powershell
+$env:PIPELINE_AUTOPSY_PORT = "3001"
+cargo run -p pipeline-autopsy-api --locked
+```
+
+The API does not load `.env` files automatically. A database path with spaces is
+supported when the environment variable is quoted. Migrations are embedded and
+run on startup; do not edit an applied migration to resolve a checksum error.
+
+## Verify changes
+
+The local equivalents of the CI jobs are:
 
 ```sh
 cargo fmt --all -- --check
+cargo build --workspace --locked
 cargo lint
 cargo test-workspace
 npm run check
 ```
 
-The frontend build includes TypeScript checking and writes to `web/dist/`.
-Use `npm run preview` to serve that build locally. Rust output goes in `target/`.
-The CLI startup integration test exercises the compiled executable. Core model
-tests cover serialization, contract variants, evidence, and invalid input shapes.
-Storage tests exercise actual migrations, database reopening, and constraints.
-API tests cover the generated specification, wire types, and HTTP behavior.
-The frontend startup test renders the empty runs view in jsdom with Testing Library. Add
-behavior tests as pipeline features arrive.
+`cargo lint` runs workspace Clippy for all targets with warnings treated as errors.
+`cargo test-workspace` runs tests with the lockfile. Those tests cover the CLI,
+shared models, actual SQLite migrations/constraints, HTTP responses, and the
+checked-in OpenAPI artifact. `npm run check` type-checks, lints, runs Vitest once,
+and produces a frontend build. See [CI](ci.md) for individual steps and triggers.
 
-### Rust tooling (T1.2)
+For frontend watch mode, use `npm run test:watch`. `npm run preview` serves the
+production build after `npm run build`; preview is not the API server.
 
-- `rust-toolchain.toml` selects stable Rust with rustfmt and Clippy.
-- `rustfmt.toml` sets edition 2024 formatting and four-space indentation.
-- Workspace lints forbid unsafe code and enable the standard Clippy lint group.
-  Each crate inherits them through `[lints] workspace = true`.
-- `cargo lint` runs Clippy for the workspace and all targets, treating warnings
-  as errors. `cargo test-workspace` runs workspace tests with the lockfile.
+TypeScript uses strict checks; TypeScript 6 remains selected for ESLint parser
+compatibility. ESLint's flat config is `web/eslint.config.js`. Vitest uses jsdom,
+DOM matchers, and automatic component cleanup from `web/src/test/setup.ts`.
+Tests live beside components as `*.test.tsx`. Tailwind is connected through its
+Vite plugin and the CSS import in `web/src/index.css`.
 
-### Frontend tooling (T1.3)
+## Model, schema, and migration changes
 
-Run these commands from the repository root:
+Regenerate the API artifact after changing wire types or route definitions:
 
-| Command | Purpose |
+```sh
+cargo run -p pipeline-autopsy-api --example export_openapi --locked > schemas/openapi.json
+cargo test -p pipeline-autopsy-api --locked
+```
+
+The core domain schema can be printed independently:
+
+```sh
+cargo run -p pipeline-autopsy-core --example export_schema --locked
+```
+
+Add a new numbered SQL file under `crates/storage/migrations/` for a database
+change. Never rewrite a migration that has been applied. Include a migration test
+and update [storage documentation](storage.md). Schema artifact changes should be
+reviewed with the Rust model changes that generated them.
+
+## Troubleshooting
+
+| Symptom | Next step |
 | --- | --- |
-| `npm run typecheck` | Check application, test, and Vite configuration types |
-| `npm run lint` | Run ESLint with TypeScript, React Hooks, and refresh rules |
-| `npm test` | Run Vitest once; failures or missing tests fail the command |
-| `npm run test:watch` | Watch tests during development |
-| `npm run build` | Type-check and produce a Vite build |
-| `npm run check` | Run all frontend checks above, excluding watch mode |
+| Node engine or native frontend dependency error | Confirm Node matches `.node-version`, then run `npm ci` from the root |
+| Missing C compiler/linker | Install the native build tools listed above |
+| API address already in use | Stop the existing API or set `PIPELINE_AUTOPSY_PORT` |
+| API 404 for pipelines/runs | Expected: business handlers are planned; health and OpenAPI are the implemented routes |
+| Browser cannot retrieve API data | The current frontend has no API integration; no CORS policy is configured yet |
+| SQLite path/permission error | Check the configured directory and access rights; the host creates parent directories |
+| Migration checksum mismatch | Restore the original migration and add a new version; preserve the database |
+| OpenAPI equality test fails | Regenerate `schemas/openapi.json`, inspect its changes, then rerun the API tests |
+| Formatting failure | Run `cargo fmt --all`, inspect the diff, and repeat the check |
 
-Both TypeScript projects enable strict checking. ESLint uses a flat config in
-`web/eslint.config.js`. Vitest shares the Vite configuration, uses jsdom, and loads
-DOM matchers and component cleanup from `web/src/test/setup.ts`. Tests live beside
-their components as `*.test.tsx`.
+## Track 1 completion
 
-Tailwind uses its Vite plugin and the CSS import in `web/src/index.css`. Utility
-classes can be used directly in TSX; the startup screen uses `min-h-screen`.
-Existing component styles remain in place. Custom design-system work belongs to
-Track 6.
+| Tasks | Foundation delivered |
+| --- | --- |
+| T1.1 | Cargo/npm workspaces and runnable CLI/frontend scaffolds |
+| T1.2–T1.3 | Rust and frontend linting, formatting, builds, and tests |
+| T1.4–T1.5 | Eight crate boundaries, shared serializable domain models, JSON Schema export |
+| T1.6–T1.7 | SQLite migrations and minimal local API with generated contract/errors |
+| T1.8–T1.9 | GitHub Actions workflow, architecture overview, and clean setup documentation |
 
-## T1.6–T1.7 acceptance criteria
-
-- SQLite opens with per-connection foreign keys and applies embedded migrations.
-- Reopening preserves records; applying the same migration again is safe.
-- Constraints enforce run isolation, valid states/counts, and revision integrity.
-- OpenAPI is generated from Rust wire models and the committed artifact stays current.
-- The local API starts after migration and serves health/specification responses.
-- HTTP errors use the documented problem-details format.
-
-## T1.4–T1.5 acceptance criteria
-
-- All eight workspace packages build and inherit shared lint rules.
-- Dependencies follow the architecture's inward direction without cycles.
-- Pipeline, Stage, Run, Finding, Contract, and Evidence are serializable core types.
-- JSON Schema export succeeds and the model tests pass.
-- Boundary ownership and validation responsibilities are documented.
-
-## T1.2–T1.3 acceptance criteria
-
-- Formatting and Clippy checks pass across both Rust crates and test targets.
-- `cargo test-workspace` executes the CLI integration test successfully.
-- Strict TypeScript checks, ESLint, Vitest, and the production build all pass.
-- The built CSS includes Tailwind utilities used by the application.
-
-## T1.1 acceptance criteria
-
-- The root Cargo workspace builds both the core library and CLI.
-- The CLI runs and uses the shared core crate.
-- The Vite frontend starts locally and builds with TypeScript checking.
-- Rust formatting, Clippy, and frontend lint checks pass.
-- Generated files and local secrets are ignored; dependency lockfiles are committed.
-
-## Commit and push
-
-After the checks pass, review the changes from the repository root:
-
-```sh
-git status
-git diff
-```
-
-New files do not appear in `git diff` until staged. Stage and inspect the changes,
-then commit and push:
-
-```sh
-git add .
-git diff --cached --stat
-git diff --cached
-git commit -m "feat: add SQLite migrations and OpenAPI contract"
-git push origin main
-```
-
-Keep generated run data, evidence exports, credentials, and dependency directories
-out of commits. Use a focused branch and pull request for subsequent tasks.
+This completes the foundation scope. The next track implements pipeline parsing
+and execution. Read [architecture](architecture.md) before changing ownership or
+crate dependencies, and [contributing](../CONTRIBUTING.md) before sending changes.

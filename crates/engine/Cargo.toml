@@ -15,6 +15,7 @@ serde-saphyr.workspace = true
 petgraph.workspace = true
 duckdb.workspace = true
 thiserror.workspace = true
+sqlparser.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

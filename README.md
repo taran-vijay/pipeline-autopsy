@@ -19,10 +19,11 @@ Track 1 (T1.1–T1.9) establishes the project foundation:
 - A React/TypeScript/Vite frontend with Tailwind, ESLint, and Vitest.
 - GitHub Actions checks for Rust and frontend builds/tests.
 
-T2.1–T2.6 add YAML parsing/validation, detailed graph diagnostics, deterministic
+T2.1–T2.7 add YAML parsing/validation, detailed graph diagnostics, deterministic
 serial scheduling, and isolated DuckDB CSV ingestion. The CLI can validate,
-plan, and ingest a pipeline. SQL execution, diagnostics, repository
-save/load methods, and business API handlers are planned. The frontend still shows
+plan, ingest, and run a pipeline. SQL stages execute in dependency order and
+materialize tables for downstream use. Diagnostics, repository save/load methods,
+and business API handlers remain planned. The frontend still shows
 an empty runs screen. The 190-order investigation is currently a synthetic model
 test fixture. It is not yet an executable demo.
 
@@ -72,6 +73,7 @@ connected to the API. Ctrl-C stops either service. Validate and ingest the small
 cargo run -p pipeline-autopsy-cli --locked -- validate examples/sales/pipeline.yaml
 cargo run -p pipeline-autopsy-cli --locked -- plan examples/sales/pipeline.yaml
 cargo run -p pipeline-autopsy-cli --locked -- ingest examples/sales/pipeline.yaml
+cargo run -p pipeline-autopsy-cli --locked -- run examples/sales/pipeline.yaml
 ```
 
 ## Verify
@@ -93,13 +95,13 @@ starts after the workflow is pushed; see [CI details](docs/ci.md).
 crates/core/        Shared domain models
 crates/api/         Local API host and versioned contract
 crates/storage/     SQLite connections, schema, and migrations
-crates/engine/      YAML, graph validation/scheduling, and DuckDB ingestion
+crates/engine/      YAML, scheduling, and materialized DuckDB execution
 crates/tracker/     Instrumentation boundary
 crates/contracts/   Contract evaluation boundary
 crates/analyzer/    Investigation boundary
 crates/cli/         Command line entry point
 web/                React + TypeScript application
-examples/sales/     Small YAML/CSV/SQL ingestion example
+examples/sales/     Small YAML/CSV/SQL execution example
 schemas/            Generated OpenAPI artifact
 .github/workflows/  Continuous integration
 docs/               Architecture and contributor documentation

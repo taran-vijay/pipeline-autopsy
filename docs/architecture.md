@@ -3,7 +3,7 @@
 The backend has eight Cargo packages. Shared domain records live in core, storage
 owns SQLite initialization/migrations, and the API provides the local host and
 versioned contract. The engine implements YAML loading/validation, graph diagnostics, deterministic
-serial scheduling, and CSV ingestion. Tracker, contracts, and analyzer remain implementation boundaries.
+serial scheduling, and materialized CSV/SQL execution. Tracker, contracts, and analyzer remain implementation boundaries.
 
 | Crate | Ownership | Direct workspace dependencies |
 | --- | --- | --- |
@@ -91,7 +91,8 @@ Pipeline definition + CSV/SQL files
   → API/CLI present recorded results; frontend inspects them
 ```
 
-This is a design boundary, not a claim that execution works today. DuckDB owns
+Pipeline parsing, scheduling, and materialized CSV/SQL execution are implemented.
+Instrumentation, contract evaluation, and diagnosis remain planned. DuckDB owns
 intermediate execution data; SQLite owns persistent metadata. Historical
 inspection should read stored records rather than rerun input queries. The
 synthetic sales fixture documents the intended 190-order diagnosis.
@@ -101,10 +102,10 @@ synthetic sales fixture documents the intended 190-order diagnosis.
 T1.5 implements the shared [domain models](domain-models.md). T1.6 adds SQLx/SQLite
 [metadata storage](storage.md), and T1.7 adds an Axum/Tokio host and the
 [OpenAPI contract](api.md). Health and specification endpoints are implemented;
-business endpoints are planned. T2.1–T2.6 add serde-saphyr YAML parsing, detailed petgraph DAG validation,
-completion-gated serial scheduling, and isolated materialized DuckDB CSV sources.
-Repositories, SQL execution, run failure/skip policies, and analysis services remain
-later work. [CI](ci.md) checks Rust and frontend builds
+business endpoints are planned. T2.1–T2.7 add serde-saphyr YAML parsing, detailed petgraph DAG validation,
+completion-gated serial scheduling, and isolated materialized DuckDB CSV/SQL
+outputs. SQL stage files are parsed/validated with sqlparser before execution.
+Repositories, run failure/skip reports, and analysis services remain later work. [CI](ci.md) checks Rust and frontend builds
 and tests. [Development](development.md) documents clean setup and operation.
 These complete T1.8–T1.9. See [pipeline specification](pipeline-spec.md) for the
 implemented Track 2 ingestion path and its limits.

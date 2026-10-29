@@ -1,4 +1,4 @@
-# Pipeline specification v1 (T2.1–T2.6)
+# Pipeline specification v1 (T2.1–T2.7)
 
 A pipeline is one YAML document using the existing shared `Pipeline`/`Stage`/
 `Contract` models. The engine parses it with serde-saphyr, validates supported
@@ -61,7 +61,7 @@ consumers that are blocked by a cycle. Group members are sorted identifiers,
 not an asserted path around the cycle. Diagnostics are deterministic across YAML
 declaration order. Fix reference errors before requesting cycle analysis.
 
-The serial scheduler is implemented; SQL execution is T2.7.
+The serial scheduler and materialized CSV/SQL execution are implemented.
 
 ## Files and SQL
 
@@ -72,9 +72,10 @@ and symlinks that resolve outside that tree are unsupported. An existing filenam
 containing DuckDB glob characters (`*`, `?`, `[` or `]`) is also rejected. Paths
 passed to DuckDB must be UTF-8. Spaces, apostrophes, and Unicode are supported.
 
-`csv_source` declares one local CSV file. `sql` declares one local SQL file. This
-step checks that SQL files exist, not their syntax or referenced table names. In
-future SQL execution, stage IDs name the input/output relations. Quote reserved
+`csv_source` declares one local CSV file. `sql` declares one local query file.
+`validate` and `plan` check that files exist; `run` additionally parses the SQL and
+binds/executes it against the scheduled inputs. Stage IDs name the input/output
+relations. Quote reserved
 SQL identifiers (for example `"select"`) in SQL source. The engine always quotes
 relation names when registering CSV sources.
 
@@ -95,8 +96,9 @@ lists must be nonempty and cannot repeat names ignoring ASCII case. Type names
 must be nonempty. Join-coverage keys pair input and reference columns; both stages
 must be distinct declared inputs of the contract's target stage. A row-loss rule
 must reference a declared input and use a finite loss ratio in `[0, 1]`.
-These checks validate declarations, not data. Column existence, actual types,
-contract evaluation, and SQL parsing/execution are later capabilities.
+These checks validate declarations, not data. Contract column/type validation and
+contract evaluation remain later capabilities. The `run` command parses, binds,
+and executes SQL against the materialized inputs.
 
 Library entry points in `pipeline-autopsy-engine`:
 
@@ -109,6 +111,8 @@ Library entry points in `pipeline-autopsy-engine`:
 | `GraphValidationError.issues` | Structured duplicate, missing-reference, or cycle diagnostics |
 | `plan_execution(&graph)` | Deterministic topological order without execution |
 | `StageScheduler` | Completion-gated, serial stage dispatch |
+| `ExecutionSession::run(&loaded)` | Execute CSV/SQL stages and retain materialized outputs |
+| `ExecutionSession::outputs()` | Row counts and schemas in actual execution order |
 | `SourceSession::ingest(&loaded)` | Materialize CSV sources in a new in-memory DuckDB database |
 
 ## Serial scheduling (T2.6)
@@ -128,8 +132,8 @@ finished only after the last dispatched stage completes.
 completion only after the callback succeeds. If a callback fails, it returns the
 stage ID and original error, leaves that stage active, and invokes no later
 callbacks. It does not automatically mark failures/skips or retry: these run-level
-policies belong to T2.8–T2.9. This callback API is the integration point for the
-DuckDB stage executor in T2.7. Current `ingest` remains a CSV-only preparation path.
+policies belong to T2.8–T2.9. The DuckDB stage executor now uses this callback API. `ingest` remains a separate
+CSV-only preparation path.
 
 To inspect the plan:
 
@@ -149,6 +153,53 @@ Expected order:
 Planning performs no CSV ingestion, SQL execution, contract evaluation, or
 metadata writes. The CLI loads the definition and checks local file paths first;
 the library's `plan_execution` operates solely on an already validated graph.
+
+## SQL execution (T2.7)
+
+```sh
+cargo run -p pipeline-autopsy-cli --locked -- run examples/sales/pipeline.yaml
+```
+
+The engine reads and checks every SQL file before opening the execution session.
+It then opens a fresh in-memory DuckDB connection and dispatches CSV/SQL stages
+through the serial scheduler. Each SQL output is a real table created with
+`CREATE TABLE <stage_id> AS <query>`. Downstream stages read those tables, not lazy
+views; changing an upstream table after completion cannot recompute an existing
+intermediate result. Empty outputs retain their column schema.
+
+The entire execution is one DuckDB transaction. A successful library call returns
+an `ExecutionSession` with the connection and all stage output observations. Any
+read, parse, ingestion, or SQL execution error stops execution; the transaction and
+in-memory session are discarded. Errors retain the failing stage ID and SQL path.
+Persisted history, failed/skipped stage reports, and cancellation are subsequent
+tasks. There is no contract evaluation, diagnosis, or SQLite run write yet.
+
+The supported query subset is deliberately explicit:
+
+- One SELECT/WITH query per file; a trailing semicolon and comments are supported.
+  Filters, projections, joins, grouping/aggregates, subqueries, and UNION/EXCEPT/
+  INTERSECT set operations are supported when understood by both sqlparser's DuckDB
+  dialect and the bundled DuckDB engine. Not all DuckDB syntax is accepted.
+- Nonrecursive CTEs may read declared inputs and earlier visible CTEs. CTE names
+  must be unique in their query and cannot shadow any pipeline stage ID.
+- Named base relations must be declared inputs, compared using DuckDB's ASCII
+  case-insensitive names. Nested queries obey the same rule. Extra declared inputs
+  may remain unused; the executor does not infer or rewrite dependency edges.
+- Relations are unqualified stage names; schema/catalog-qualified references and
+  string/file table references are unsupported. Quote SQL keywords as identifiers.
+- Table functions/external readers, recursive CTEs, scripts, DDL/DML, SELECT INTO,
+  query locks/settings/output formats, and pipe queries are unsupported.
+
+The query AST is validated and rendered before DuckDB sees it, avoiding string
+splitting that would damage semicolons inside literals or comments. This also
+avoids DuckDB's Rust prepare API executing earlier statements in a script. These
+subset checks are not a security sandbox for untrusted SQL; broader execution
+controls belong to T7.7. No arbitrary-query HTTP route is exposed.
+
+`ExecutionSession::connection()` is available for trusted Rust inspection.
+`outputs()` reports observations at completion, not live counts after callers
+mutate tables. The CLI prints counts/schemas and drops the session on exit; it
+does not export or persist result rows.
 
 ## CSV ingestion
 
@@ -199,10 +250,20 @@ orders: 3 rows, 4 columns
 ```
 
 Customer 999 is intentionally absent. All three orders remain in the source table.
-The join and daily aggregate SQL files are future execution inputs, and the
-coverage contract is not evaluated yet. The CLI exits after inspection, discarding
-the in-memory DuckDB session. Validation/import failures produce a nonzero exit
+The `ingest` command leaves all three source orders present. To execute the join
+and aggregation, use `run`, which reports:
+
+```text
+customers: 2 rows, 2 columns
+orders: 3 rows, 4 columns
+join_customers: 2 rows, 5 columns
+daily_revenue: 1 rows, 2 columns
+```
+
+The one daily aggregate has revenue 49.45, verified by the execution integration
+test. The coverage contract is not evaluated yet. The CLI exits after inspection,
+discarding the in-memory DuckDB session. Validation/import failures produce a nonzero exit
 status and a diagnostic on stderr.
 
-This small ingestion example is separate from the synthetic historical 190-order
+This small execution example is separate from the synthetic historical 190-order
 model fixture. The full canonical execution/diagnosis demo arrives in later tracks.

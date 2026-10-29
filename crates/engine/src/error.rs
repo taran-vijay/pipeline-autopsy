@@ -14,6 +14,28 @@ pub enum EngineError {
     Validation { field: String, message: String },
     #[error(transparent)]
     Graph(#[from] GraphValidationError),
+    #[error(transparent)]
+    Schedule(#[from] crate::ScheduleError),
+    #[error("cannot read SQL for stage {stage} ({path}): {source}")]
+    SqlRead {
+        stage: String,
+        path: PathBuf,
+        #[source]
+        source: std::io::Error,
+    },
+    #[error("invalid SQL for stage {stage} ({path}): {message}")]
+    SqlDefinition {
+        stage: String,
+        path: PathBuf,
+        message: String,
+    },
+    #[error("SQL execution failed for stage {stage} ({path}): {source}")]
+    Sql {
+        stage: String,
+        path: PathBuf,
+        #[source]
+        source: duckdb::Error,
+    },
     #[error("DuckDB operation failed: {0}")]
     Database(#[from] duckdb::Error),
     #[error("CSV ingestion failed for stage {stage} ({path}): {source}")]

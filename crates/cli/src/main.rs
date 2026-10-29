@@ -1,6 +1,6 @@
 use std::{ffi::OsString, process::ExitCode};
 
-use pipeline_autopsy_engine::{SourceSession, load_pipeline, plan_execution};
+use pipeline_autopsy_engine::{ExecutionSession, SourceSession, load_pipeline, plan_execution};
 
 fn main() -> ExitCode {
     match run(std::env::args_os().skip(1).collect()) {
@@ -17,22 +17,28 @@ fn run(args: Vec<OsString>) -> Result<(), Box<dyn std::error::Error>> {
         [] => {
             println!("Pipeline Autopsy {}", pipeline_autopsy_core::VERSION);
             println!(
-                "YAML validation, execution planning, and CSV ingestion are available. SQL execution is coming later."
+                "YAML validation, execution planning, CSV ingestion, and SQL stage execution are available."
             );
             println!("Use --help for commands.");
         }
         [flag] if flag == "--help" || flag == "-h" => {
             println!("Pipeline Autopsy {}", pipeline_autopsy_core::VERSION);
-            println!("Usage: pipeline-autopsy <validate|plan|ingest> <pipeline.yaml>");
+            println!("Usage: pipeline-autopsy <validate|plan|ingest|run> <pipeline.yaml>");
             println!(
                 "  validate  Check YAML, definitions, graph, and local file paths (not SQL syntax)"
             );
+            println!("  run       Execute CSV and SQL stages in an isolated DuckDB session");
             println!("  plan      Show deterministic stage order without executing stages");
             println!(
                 "  ingest    Validate and materialize CSV sources in an isolated DuckDB session"
             );
         }
-        [command, path] if command == "validate" || command == "plan" || command == "ingest" => {
+        [command, path]
+            if command == "validate"
+                || command == "plan"
+                || command == "ingest"
+                || command == "run" =>
+        {
             let loaded = load_pipeline(path)?;
             println!(
                 "Validated {} revision {}: {} stages, {} dependencies",
@@ -47,6 +53,20 @@ fn run(args: Vec<OsString>) -> Result<(), Box<dyn std::error::Error>> {
                     println!("{}. {stage}", index + 1);
                 }
                 println!("Plan only; no stages were executed.");
+            }
+            if command == "run" {
+                let session = ExecutionSession::run(&loaded)?;
+                for output in session.outputs() {
+                    println!(
+                        "{}: {} rows, {} columns",
+                        output.stage_id,
+                        output.row_count,
+                        output.columns.len()
+                    );
+                }
+                println!(
+                    "Execution completed. Contracts were not evaluated; results are discarded on exit."
+                );
             }
             if command == "ingest" {
                 let session = SourceSession::ingest(&loaded)?;
@@ -65,7 +85,8 @@ fn run(args: Vec<OsString>) -> Result<(), Box<dyn std::error::Error>> {
         }
         _ => {
             return Err(
-                "usage: pipeline-autopsy <validate|plan|ingest> <pipeline.yaml> (or --help)".into(),
+                "usage: pipeline-autopsy <validate|plan|ingest|run> <pipeline.yaml> (or --help)"
+                    .into(),
             );
         }
     }

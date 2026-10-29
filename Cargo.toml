@@ -38,6 +38,7 @@ tower = { version = "0.5", features = ["util"] }
 tempfile = "3"
 serde-saphyr = "2"
 petgraph = "0.8"
+sqlparser = { version = "0.63", features = ["visitor"] }
 duckdb = { version = "1.20000.1", features = ["bundled"] }
 
 [workspace.lints.rust]

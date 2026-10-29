@@ -65,13 +65,13 @@ fn rejects_missing_inputs_duplicate_names_edges_and_cycles() {
     missing.stages[2].inputs[0] = StageId::from("absent");
     assert!(matches!(
         validate_pipeline(&missing),
-        Err(EngineError::MissingInput { .. })
+        Err(EngineError::Graph(_))
     ));
     let mut names = pipeline.clone();
     names.stages[1].id = StageId::from("ORDERS");
     assert!(matches!(
         validate_pipeline(&names),
-        Err(EngineError::DuplicateStage { .. })
+        Err(EngineError::Graph(_))
     ));
     let mut edges = pipeline.clone();
     edges.stages[2].inputs.push(StageId::from("orders"));
@@ -80,7 +80,7 @@ fn rejects_missing_inputs_duplicate_names_edges_and_cycles() {
     cycle.stages[2].inputs.push(StageId::from("daily_revenue"));
     assert!(matches!(
         validate_pipeline(&cycle),
-        Err(EngineError::Cycle { .. })
+        Err(EngineError::Graph(_))
     ));
     let mut self_loop = pipeline;
     self_loop.stages[3]
@@ -88,7 +88,7 @@ fn rejects_missing_inputs_duplicate_names_edges_and_cycles() {
         .push(StageId::from("daily_revenue"));
     assert!(matches!(
         validate_pipeline(&self_loop),
-        Err(EngineError::Cycle { .. })
+        Err(EngineError::Graph(_))
     ));
 }
 

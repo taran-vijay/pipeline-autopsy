@@ -62,3 +62,16 @@ fn invalid_commands_and_missing_files_exit_unsuccessfully() {
         );
     }
 }
+
+#[test]
+fn plan_prints_a_deterministic_order_without_executing_sql() {
+    let output = Command::new(env!("CARGO_BIN_EXE_pipeline-autopsy"))
+        .arg("plan")
+        .arg(sales_path())
+        .output()
+        .unwrap();
+    assert!(output.status.success(), "{output:?}");
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("1. customers\n2. orders\n3. join_customers\n4. daily_revenue"));
+    assert!(stdout.contains("Plan only; no stages were executed."));
+}

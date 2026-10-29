@@ -1,4 +1,4 @@
-# Pipeline specification v1 (T2.1–T2.4)
+# Pipeline specification v1 (T2.1–T2.6)
 
 A pipeline is one YAML document using the existing shared `Pipeline`/`Stage`/
 `Contract` models. The engine parses it with serde-saphyr, validates supported
@@ -52,8 +52,16 @@ matching DuckDB table-name behavior. References use the exact declared spelling.
 Input edges are unique. CSV sources cannot have inputs; SQL stages require at
 least one input. Declarations may appear in any order, and disconnected source
 branches are allowed. Graph edges point from input to consumer. Construction
-rejects missing references, duplicate names/edges, self-loops, and cycles. Scheduling
-and SQL execution are later tasks.
+rejects missing references, duplicate names/edges, self-loops, and cycles.
+Graph validation reports missing references and duplicate names/edges together,
+with a declared-spelling hint for case mismatches. After references resolve,
+it reports each cyclic strongly connected component, including self-loops.
+Groups contain exactly the mutually reachable stages, excluding downstream
+consumers that are blocked by a cycle. Group members are sorted identifiers,
+not an asserted path around the cycle. Diagnostics are deterministic across YAML
+declaration order. Fix reference errors before requesting cycle analysis.
+
+The serial scheduler is implemented; SQL execution is T2.7.
 
 ## Files and SQL
 
@@ -98,7 +106,49 @@ Library entry points in `pipeline-autopsy-engine`:
 | `validate_pipeline(&pipeline)` | Validate shared models and return their dependency graph |
 | `load_pipeline(path)` | Parse, validate, build graph, and resolve all source/SQL files |
 | `PipelineGraph` | Immutable graph plus stage lookup and sorted direct inputs/consumers |
+| `GraphValidationError.issues` | Structured duplicate, missing-reference, or cycle diagnostics |
+| `plan_execution(&graph)` | Deterministic topological order without execution |
+| `StageScheduler` | Completion-gated, serial stage dispatch |
 | `SourceSession::ingest(&loaded)` | Materialize CSV sources in a new in-memory DuckDB database |
+
+## Serial scheduling (T2.6)
+
+`StageScheduler` uses Kahn-style readiness counts. It initially releases stages
+with no inputs, then releases consumers only when every input has completed.
+When multiple stages are ready, the stage with the smallest ASCII identifier runs
+next. This rule is independent of YAML declaration order and applies after every
+completion; it is not a layer-by-layer or parallel execution policy.
+
+`next_stage()` dispatches at most one stage. A second dispatch is rejected while
+a stage is active. `complete_stage(id)` accepts only that active stage; wrong or
+repeated completions return an error without changing state. The scheduler becomes
+finished only after the last dispatched stage completes.
+
+`execute_with(callback)` dispatches trusted executor callbacks and records a
+completion only after the callback succeeds. If a callback fails, it returns the
+stage ID and original error, leaves that stage active, and invokes no later
+callbacks. It does not automatically mark failures/skips or retry: these run-level
+policies belong to T2.8–T2.9. This callback API is the integration point for the
+DuckDB stage executor in T2.7. Current `ingest` remains a CSV-only preparation path.
+
+To inspect the plan:
+
+```sh
+cargo run -p pipeline-autopsy-cli --locked -- plan examples/sales/pipeline.yaml
+```
+
+Expected order:
+
+```text
+1. customers
+2. orders
+3. join_customers
+4. daily_revenue
+```
+
+Planning performs no CSV ingestion, SQL execution, contract evaluation, or
+metadata writes. The CLI loads the definition and checks local file paths first;
+the library's `plan_execution` operates solely on an already validated graph.
 
 ## CSV ingestion
 

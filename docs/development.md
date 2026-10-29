@@ -92,9 +92,13 @@ ingest the small example with:
 
 ```sh
 cargo run -p pipeline-autopsy-cli --locked -- validate examples/sales/pipeline.yaml
+cargo run -p pipeline-autopsy-cli --locked -- plan examples/sales/pipeline.yaml
 cargo run -p pipeline-autopsy-cli --locked -- ingest examples/sales/pipeline.yaml
 ```
 
+The plan command prints `customers → orders → join_customers → daily_revenue`
+without executing those stages. The library scheduler dispatches executor callbacks
+and waits for explicit completion before releasing dependents.
 The ingest command reports three orders and two customers. It does not execute
 SQL stages or persist run history. See [the pipeline format](pipeline-spec.md).
 
@@ -141,7 +145,7 @@ npm run check
 
 `cargo lint` runs workspace Clippy for all targets with warnings treated as errors.
 `cargo test-workspace` runs tests with the lockfile. Those tests cover the CLI,
-shared models, YAML/graph validation, real DuckDB CSV ingestion, SQLite
+shared models, YAML/graph validation, deterministic scheduling, real DuckDB CSV ingestion, SQLite
 migrations/constraints, HTTP responses, and the
 checked-in OpenAPI artifact. `npm run check` type-checks, lints, runs Vitest once,
 and produces a frontend build. See [CI](ci.md) for individual steps and triggers.
@@ -199,6 +203,7 @@ reviewed with the Rust model changes that generated them.
 | T1.6–T1.7 | SQLite migrations and minimal local API with generated contract/errors |
 | T1.8–T1.9 | GitHub Actions workflow, architecture overview, and clean setup documentation |
 
-This completes the foundation scope. T2.1–T2.4 implement pipeline parsing,
-validation, source ingestion, and graph construction. Subsequent tasks implement SQL execution and scheduling. Read [architecture](architecture.md) before changing ownership or
+This completes the foundation scope. T2.1–T2.6 implement parsing, source ingestion,
+detailed graph validation, and a serial scheduler. The next task integrates SQL
+stage execution. Read [architecture](architecture.md) before changing ownership or
 crate dependencies, and [contributing](../CONTRIBUTING.md) before sending changes.

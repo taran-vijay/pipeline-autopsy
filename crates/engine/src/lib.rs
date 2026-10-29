@@ -1,11 +1,13 @@
 //! YAML definitions, dependency graphs, and isolated DuckDB CSV ingestion.
-//! SQL stage execution and scheduling are subsequent Track 2 tasks.
+//! Serial scheduling dispatches executor callbacks; SQL execution is T2.7.
 pub mod error;
 pub mod graph;
+pub mod scheduler;
 pub mod sources;
 pub mod spec;
 
-pub use error::EngineError;
+pub use error::{EngineError, GraphIssue, GraphValidationError};
 pub use graph::PipelineGraph;
+pub use scheduler::{DispatchError, ScheduleError, StageScheduler, plan_execution};
 pub use sources::{SourceInfo, SourceSession};
 pub use spec::{LoadedPipeline, load_pipeline, parse_pipeline, validate_pipeline};

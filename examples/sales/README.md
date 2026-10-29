@@ -8,10 +8,12 @@ From the repository root:
 
 ```sh
 cargo run -p pipeline-autopsy-cli --locked -- validate examples/sales/pipeline.yaml
+cargo run -p pipeline-autopsy-cli --locked -- plan examples/sales/pipeline.yaml
 cargo run -p pipeline-autopsy-cli --locked -- ingest examples/sales/pipeline.yaml
 ```
 
-Expected: four graph nodes, three edges, three orders, two customers. SQL stage
+Expected: four graph nodes, three edges, three orders, two customers. Planning
+prints `customers → orders → join_customers → daily_revenue` without executing it. SQL stage
 execution is not implemented yet, so no join/aggregate result or finding is produced.
 The SQL files describe a future join that retains two orders and one day's revenue
 of 49.45; those results are not produced by the current ingestion command.

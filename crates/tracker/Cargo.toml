@@ -9,6 +9,13 @@ description = "Run and stage instrumentation for Pipeline Autopsy"
 [dependencies]
 pipeline-autopsy-core.workspace = true
 pipeline-autopsy-storage.workspace = true
+sqlx.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true
+tempfile.workspace = true
+serde_json.workspace = true
 
 [lints]
 workspace = true

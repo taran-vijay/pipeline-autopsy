@@ -91,3 +91,34 @@ fn run_executes_the_sales_pipeline_and_reports_actual_counts() {
     assert!(stdout.contains("Execution completed."));
     assert!(stdout.contains("Contracts were not evaluated"));
 }
+
+#[test]
+fn prepare_persists_unique_pending_identities_across_cli_processes() {
+    let temp = tempfile::tempdir().unwrap();
+    let database = temp.path().join("metadata.sqlite");
+    let mut ids = std::collections::BTreeSet::new();
+    for _ in 0..2 {
+        let output = Command::new(env!("CARGO_BIN_EXE_pipeline-autopsy"))
+            .arg("prepare")
+            .arg(sales_path())
+            .arg(&database)
+            .current_dir(std::env::temp_dir())
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "{output:?}");
+        let stdout = String::from_utf8(output.stdout).unwrap();
+        let id = stdout
+            .lines()
+            .next()
+            .unwrap()
+            .split_whitespace()
+            .nth(2)
+            .unwrap();
+        assert!(ids.insert(id.to_owned()));
+        assert_eq!(stdout.matches("Stage execution:").count(), 4);
+        assert!(stdout.contains(&format!("{id}/join_customers")));
+        assert!(stdout.contains("(pending)"));
+        assert!(stdout.contains("No stages were executed."));
+    }
+    assert!(database.is_file());
+}

@@ -65,6 +65,16 @@ pub struct StageRun {
     pub skip_reason: Option<String>,
 }
 
+impl StageRun {
+    /// Resolve this run-scoped record to its durable composite identity.
+    pub fn execution_id(&self, run_id: &RunId) -> crate::StageExecutionId {
+        crate::StageExecutionId {
+            run_id: run_id.clone(),
+            stage_id: self.stage_id.clone(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct ColumnSchema {

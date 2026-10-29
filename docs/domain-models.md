@@ -20,7 +20,9 @@ schema version 1, separate from package version and the user's pipeline revision
   tag (`csv_source`, `sql`, `join_coverage`, `rows`, and so on).
 - IDs use distinct transparent string newtypes. A `StageId` cannot be accidentally
   passed as a `RunId` in Rust. They serialize as strings. ID allocation belongs to
-  Track 3; constructors do not validate nonempty/unique identifiers.
+  the tracker in T3.1; constructors do not validate nonempty/unique identifiers.
+  `StageExecutionId` is a composite object containing `run_id` and `stage_id`,
+  matching the persistent stage execution key.
 - Unknown record fields and unsupported enum variants are rejected so typos do not
   silently change the meaning of definitions. Optional collections default to empty.
 - Timestamps use UTC date-time values serialized as RFC 3339 strings. Durations are

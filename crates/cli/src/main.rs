@@ -2,8 +2,9 @@ use std::{ffi::OsString, process::ExitCode};
 
 use pipeline_autopsy_engine::{ExecutionSession, SourceSession, load_pipeline, plan_execution};
 
-fn main() -> ExitCode {
-    match run(std::env::args_os().skip(1).collect()) {
+#[tokio::main]
+async fn main() -> ExitCode {
+    match run(std::env::args_os().skip(1).collect()).await {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {
             eprintln!("error: {error}");
@@ -12,7 +13,7 @@ fn main() -> ExitCode {
     }
 }
 
-fn run(args: Vec<OsString>) -> Result<(), Box<dyn std::error::Error>> {
+async fn run(args: Vec<OsString>) -> Result<(), Box<dyn std::error::Error>> {
     match args.as_slice() {
         [] => {
             println!("Pipeline Autopsy {}", pipeline_autopsy_core::VERSION);
@@ -23,14 +24,34 @@ fn run(args: Vec<OsString>) -> Result<(), Box<dyn std::error::Error>> {
         }
         [flag] if flag == "--help" || flag == "-h" => {
             println!("Pipeline Autopsy {}", pipeline_autopsy_core::VERSION);
-            println!("Usage: pipeline-autopsy <validate|plan|ingest|run> <pipeline.yaml>");
+            println!(
+                "Usage: pipeline-autopsy <validate|plan|ingest|run> <pipeline.yaml>; prepare <pipeline.yaml> <metadata.sqlite>"
+            );
             println!(
                 "  validate  Check YAML, definitions, graph, and local file paths (not SQL syntax)"
+            );
+            println!(
+                "  prepare <pipeline.yaml> <metadata.sqlite>  Persist a new pending run and stage IDs"
             );
             println!("  run       Execute CSV and SQL stages in an isolated DuckDB session");
             println!("  plan      Show deterministic stage order without executing stages");
             println!(
                 "  ingest    Validate and materialize CSV sources in an isolated DuckDB session"
+            );
+        }
+        [command, path, database] if command == "prepare" => {
+            let loaded = load_pipeline(path)?;
+            let pool = pipeline_autopsy_storage::open_database(database).await?;
+            let result = pipeline_autopsy_tracker::prepare_run(&pool, loaded.pipeline()).await;
+            pool.close().await;
+            let record = result?;
+            println!("Prepared run {} (pending)", record.id);
+            for stage in &record.stages {
+                println!("Stage execution: {}", stage.execution_id(&record.id));
+            }
+            println!(
+                "Saved to {}. No stages were executed.",
+                database.to_string_lossy()
             );
         }
         [command, path]
@@ -85,7 +106,7 @@ fn run(args: Vec<OsString>) -> Result<(), Box<dyn std::error::Error>> {
         }
         _ => {
             return Err(
-                "usage: pipeline-autopsy <validate|plan|ingest|run> <pipeline.yaml> (or --help)"
+                "usage: pipeline-autopsy <validate|plan|ingest|run> <pipeline.yaml>; prepare <pipeline.yaml> <metadata.sqlite> (or --help)"
                     .into(),
             );
         }

@@ -210,3 +210,7 @@ detailed graph validation, a serial scheduler, and materialized SQL execution.
 The next task adds failed/skipped/completed stage reporting. Read
 [architecture](architecture.md) before changing ownership or crate dependencies,
 and [contributing](../CONTRIBUTING.md) before sending changes.
+
+T3.1 adds [persistent run/stage identity registration](run-identities.md). Use
+`prepare <pipeline.yaml> <metadata.sqlite>` to allocate pending records without
+executing stages. Full telemetry capture and history APIs follow in later tasks.

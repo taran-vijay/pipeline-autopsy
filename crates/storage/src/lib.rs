@@ -8,10 +8,24 @@ use sqlx::{
     sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions},
 };
 
+mod registration;
+pub use registration::create_pending_run;
+
 pub static MIGRATOR: Migrator = sqlx::migrate!("./migrations");
 
 #[derive(Debug, thiserror::Error)]
 pub enum StorageError {
+    #[error(
+        "pipeline {pipeline_id} revision {version} already has a different definition; use a new revision"
+    )]
+    RevisionConflict {
+        pipeline_id: String,
+        version: String,
+    },
+    #[error("invalid run registration: {0}")]
+    InvalidRegistration(String),
+    #[error("metadata JSON failed: {0}")]
+    Json(#[from] serde_json::Error),
     #[error("database connection failed: {0}")]
     Database(#[from] sqlx::Error),
     #[error("database migration failed: {0}")]

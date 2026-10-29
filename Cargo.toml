@@ -36,6 +36,7 @@ axum = "0.8"
 thiserror = "2"
 tower = { version = "0.5", features = ["util"] }
 tempfile = "3"
+uuid = { version = "1", features = ["v4"] }
 serde-saphyr = "2"
 petgraph = "0.8"
 sqlparser = { version = "0.63", features = ["visitor"] }

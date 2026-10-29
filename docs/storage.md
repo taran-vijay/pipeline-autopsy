@@ -1,4 +1,4 @@
-# SQLite metadata storage (T1.6)
+# SQLite metadata storage (T1.6, T3.1)
 
 The storage crate embeds `migrations/0001_metadata.sql` with SQLx. Both
 `open_database(path)` and `in_memory_database()` apply missing migrations before
@@ -53,11 +53,14 @@ Indexes support pipeline/status run-history queries and stage investigations.
 - Timestamp strings use UTC RFC 3339. Application code must validate chronology,
   lifecycle transitions, required fields, and definition/reference semantics beyond
   the relational constraints. DDL checks are not a complete domain validator.
-- Sample limits, evidence redaction/retention, SQL/input fingerprints, and repository
+- Sample limits, evidence redaction/retention, SQL/input fingerprints, and full telemetry repository
   save/load methods are later tasks. This migration defines their storage boundary.
 
-Future repositories must initialize a run and its stage/contract snapshots in one
-transaction, and update related telemetry/findings/evidence atomically. Deletion
+`create_pending_run` now initializes a run and its stage/contract snapshots in one
+transaction. A conflicting definition for the same pipeline revision is rejected;
+a repeated run of the same definition gets its own record. See
+[run identities](run-identities.md). Future repositories will update related
+telemetry/findings/evidence atomically. Deletion
 and retention must be explicit actions; the foundation API exposes no delete route.
 
 ## Start and test

@@ -15,6 +15,11 @@ pipeline-autopsy-core.workspace = true
 pipeline-autopsy-engine.workspace = true
 pipeline-autopsy-analyzer.workspace = true
 pipeline-autopsy-storage.workspace = true
+pipeline-autopsy-tracker.workspace = true
+tokio.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
 
 [lints]
 workspace = true

@@ -34,3 +34,20 @@ identifier!(RunId);
 identifier!(ContractId);
 identifier!(FindingId);
 identifier!(EvidenceId);
+
+/// Identity of one stage execution. Definition StageIds repeat across runs;
+/// this composite key matches the persistent stage_runs primary key.
+#[derive(
+    Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, JsonSchema,
+)]
+#[serde(deny_unknown_fields)]
+pub struct StageExecutionId {
+    pub run_id: RunId,
+    pub stage_id: StageId,
+}
+
+impl std::fmt::Display for StageExecutionId {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(formatter, "{}/{}", self.run_id, self.stage_id)
+    }
+}

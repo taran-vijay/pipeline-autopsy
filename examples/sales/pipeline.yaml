@@ -1,0 +1,38 @@
+schema_version: 1
+id: sales_fixture
+version: "1"
+name: Small sales ingestion fixture
+stages:
+  - id: orders
+    name: Orders
+    operation:
+      kind: csv_source
+      path: data/orders.csv
+  - id: customers
+    name: Customers
+    operation:
+      kind: csv_source
+      path: data/customers.csv
+  - id: join_customers
+    name: Join customers
+    inputs: [orders, customers]
+    operation:
+      kind: sql
+      path: sql/join_customers.sql
+  - id: daily_revenue
+    name: Daily revenue
+    inputs: [join_customers]
+    operation:
+      kind: sql
+      path: sql/daily_revenue.sql
+contracts:
+  - id: customer_coverage
+    stage_id: join_customers
+    severity: error
+    rule:
+      kind: join_coverage
+      input_stage: orders
+      reference_stage: customers
+      keys:
+        - input_column: customer_id
+          reference_column: customer_id

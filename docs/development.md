@@ -13,16 +13,17 @@ requests rustfmt and Clippy. Because stable advances, build output can change af
 a toolchain update even while `Cargo.lock` stays fixed. CI prints the installed
 toolchain during setup and checks the same channel.
 
-A native build toolchain is needed for Rust linking and the bundled SQLite build:
+A native C/C++ build toolchain is needed for Rust linking and bundled SQLite/DuckDB:
 
 | Platform | Requirement |
 | --- | --- |
 | macOS | Xcode Command Line Tools (`xcode-select --install`) |
-| Ubuntu/Debian | C compiler/linker and make (`build-essential`) |
+| Ubuntu/Debian | C/C++ compilers, linker, and make (`build-essential`) |
 | Windows | Rust MSVC toolchain and Visual Studio C++ Build Tools with Windows SDK |
 
 These are platform prerequisites, not extra project services. SQLite is bundled by
 SQLx; no database server, SQLite command line program, or SQLx CLI is required.
+The first DuckDB C++ build may take several minutes; later builds reuse its artifacts.
 The application is developed on macOS; CI currently verifies Linux. Windows and
 additional platforms are not yet part of the test matrix.
 
@@ -86,7 +87,16 @@ The command line scaffold is independent:
 cargo run -p pipeline-autopsy-cli --locked
 ```
 
-It prints the shared core version. No pipeline execution command exists yet.
+With no arguments it prints the core version and command guidance. Validate and
+ingest the small example with:
+
+```sh
+cargo run -p pipeline-autopsy-cli --locked -- validate examples/sales/pipeline.yaml
+cargo run -p pipeline-autopsy-cli --locked -- ingest examples/sales/pipeline.yaml
+```
+
+The ingest command reports three orders and two customers. It does not execute
+SQL stages or persist run history. See [the pipeline format](pipeline-spec.md).
 
 ## Configuration and generated files
 
@@ -131,7 +141,8 @@ npm run check
 
 `cargo lint` runs workspace Clippy for all targets with warnings treated as errors.
 `cargo test-workspace` runs tests with the lockfile. Those tests cover the CLI,
-shared models, actual SQLite migrations/constraints, HTTP responses, and the
+shared models, YAML/graph validation, real DuckDB CSV ingestion, SQLite
+migrations/constraints, HTTP responses, and the
 checked-in OpenAPI artifact. `npm run check` type-checks, lints, runs Vitest once,
 and produces a frontend build. See [CI](ci.md) for individual steps and triggers.
 
@@ -188,6 +199,6 @@ reviewed with the Rust model changes that generated them.
 | T1.6–T1.7 | SQLite migrations and minimal local API with generated contract/errors |
 | T1.8–T1.9 | GitHub Actions workflow, architecture overview, and clean setup documentation |
 
-This completes the foundation scope. The next track implements pipeline parsing
-and execution. Read [architecture](architecture.md) before changing ownership or
+This completes the foundation scope. T2.1–T2.4 implement pipeline parsing,
+validation, source ingestion, and graph construction. Subsequent tasks implement SQL execution and scheduling. Read [architecture](architecture.md) before changing ownership or
 crate dependencies, and [contributing](../CONTRIBUTING.md) before sending changes.

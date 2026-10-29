@@ -2,8 +2,8 @@
 
 The backend has eight Cargo packages. Shared domain records live in core, storage
 owns SQLite initialization/migrations, and the API provides the local host and
-versioned contract. The engine, tracker, contracts, and analyzer currently reserve
-their implementation boundaries.
+versioned contract. The engine implements YAML loading/validation, graph construction, and CSV
+ingestion. Tracker, contracts, and analyzer remain implementation boundaries.
 
 | Crate | Ownership | Direct workspace dependencies |
 | --- | --- | --- |
@@ -101,7 +101,9 @@ synthetic sales fixture documents the intended 190-order diagnosis.
 T1.5 implements the shared [domain models](domain-models.md). T1.6 adds SQLx/SQLite
 [metadata storage](storage.md), and T1.7 adds an Axum/Tokio host and the
 [OpenAPI contract](api.md). Health and specification endpoints are implemented;
-business endpoints are planned. DuckDB, petgraph, repositories, and execution/
-analysis services remain later work. [CI](ci.md) checks Rust and frontend builds
+business endpoints are planned. T2.1–T2.4 add serde-saphyr YAML parsing, petgraph
+DAG construction, and isolated materialized DuckDB CSV sources. Repositories, SQL
+execution, scheduling, and analysis services remain later work. [CI](ci.md) checks Rust and frontend builds
 and tests. [Development](development.md) documents clean setup and operation.
-These complete T1.8–T1.9; pipeline execution begins in Track 2.
+These complete T1.8–T1.9. See [pipeline specification](pipeline-spec.md) for the
+implemented Track 2 ingestion path and its limits.

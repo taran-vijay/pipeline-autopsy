@@ -53,9 +53,10 @@ Row loss compares a named input's count with the target output's count. The
 ratio is clamped at zero for growth and empty inputs pass; allowed loss must be a
 finite number from zero to one. Not-null expectations are separate contracts.
 
-The model only describes these rules. The planner/evaluator must validate IDs,
-references, graph shape, nonempty keys/columns, supported schema version, and
-threshold ranges before execution. Deserialization alone does not do this.
+The engine's YAML validation path now checks IDs/references, DAG shape, nonempty
+keys/columns, supported schema version, and threshold ranges. Raw core-model Serde
+deserialization alone does not perform these checks. Column existence/type checks
+and data-contract evaluation remain future work. See [pipeline format](pipeline-spec.md).
 
 ## Evidence and uncertainty
 

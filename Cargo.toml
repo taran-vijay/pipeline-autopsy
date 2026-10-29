@@ -36,6 +36,9 @@ axum = "0.8"
 thiserror = "2"
 tower = { version = "0.5", features = ["util"] }
 tempfile = "3"
+serde-saphyr = "2"
+petgraph = "0.8"
+duckdb = { version = "1.20000.1", features = ["bundled"] }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

@@ -11,5 +11,14 @@ pipeline-autopsy-core.workspace = true
 pipeline-autopsy-tracker.workspace = true
 pipeline-autopsy-contracts.workspace = true
 
+serde-saphyr.workspace = true
+petgraph.workspace = true
+duckdb.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+serde_json.workspace = true
+
 [lints]
 workspace = true

@@ -19,9 +19,10 @@ Track 1 (T1.1–T1.9) establishes the project foundation:
 - A React/TypeScript/Vite frontend with Tailwind, ESLint, and Vitest.
 - GitHub Actions checks for Rust and frontend builds/tests.
 
-The CLI prints a startup message, and the frontend shows an empty runs screen.
-Pipeline execution, diagnostics, repository save/load methods, and business API
-handlers are planned. The 190-order investigation is currently a synthetic model
+T2.1–T2.4 add YAML parsing/validation, dependency graph construction, and isolated
+DuckDB CSV ingestion through the CLI. SQL execution, diagnostics, repository
+save/load methods, and business API handlers are planned. The frontend still shows
+an empty runs screen. The 190-order investigation is currently a synthetic model
 test fixture. It is not yet an executable demo.
 
 Development currently runs locally in a browser alongside a Rust service. Tauri
@@ -30,7 +31,7 @@ packaging is a future desktop option. No hosted service or cloud account is need
 ## Prerequisites
 
 - Stable Rust installed through [rustup](https://rustup.rs/), including a platform
-  C compiler/linker. `rust-toolchain.toml` selects stable, rustfmt, and Clippy.
+  C/C++ compiler and linker. `rust-toolchain.toml` selects stable, rustfmt, and Clippy.
 - Node.js **26.10.0**, matching `.node-version`, with npm. Compatible alternatives
   are listed in `package.json`, but CI uses the pinned version.
 - Git. A separate SQLite installation and SQLx CLI are not required.
@@ -64,10 +65,11 @@ npm run dev
 ```
 
 Open the URL Vite prints (normally `http://localhost:5173`). The frontend is not yet
-connected to the API. Ctrl-C stops either service. To inspect the CLI scaffold:
+connected to the API. Ctrl-C stops either service. Validate and ingest the small sales fixture:
 
 ```sh
-cargo run -p pipeline-autopsy-cli --locked
+cargo run -p pipeline-autopsy-cli --locked -- validate examples/sales/pipeline.yaml
+cargo run -p pipeline-autopsy-cli --locked -- ingest examples/sales/pipeline.yaml
 ```
 
 ## Verify
@@ -89,12 +91,13 @@ starts after the workflow is pushed; see [CI details](docs/ci.md).
 crates/core/        Shared domain models
 crates/api/         Local API host and versioned contract
 crates/storage/     SQLite connections, schema, and migrations
-crates/engine/      Execution and planning boundary
+crates/engine/      YAML validation, dependency graph, and DuckDB ingestion
 crates/tracker/     Instrumentation boundary
 crates/contracts/   Contract evaluation boundary
 crates/analyzer/    Investigation boundary
 crates/cli/         Command line entry point
 web/                React + TypeScript application
+examples/sales/     Small YAML/CSV/SQL ingestion example
 schemas/            Generated OpenAPI artifact
 .github/workflows/  Continuous integration
 docs/               Architecture and contributor documentation
@@ -105,6 +108,7 @@ docs/               Architecture and contributor documentation
 | [Development](docs/development.md) | Setup, running services, checks, troubleshooting |
 | [Architecture](docs/architecture.md) | Boundaries, dependency direction, runtime flow |
 | [Domain models](docs/domain-models.md) | Shared records, serialization, semantics |
+| [Pipeline format](docs/pipeline-spec.md) | YAML, paths, dependencies, CSV policy, CLI example |
 | [Storage](docs/storage.md) | Database schema, migration rules, integrity |
 | [API](docs/api.md) | Implemented/planned routes, wire types, errors |
 | [CI](docs/ci.md) | Triggers, jobs, local equivalents, first-run expectations |

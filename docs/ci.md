@@ -7,7 +7,8 @@ The `CI` workflow lives in `.github/workflows/ci.yml`. It starts on:
 - Manual dispatch through GitHub Actions after the workflow is on the default branch.
 
 Rust and frontend jobs run independently on GitHub-hosted `ubuntu-latest` runners.
-Both must pass. A newer run for the same branch/PR cancels an older in-progress
+Both must pass. The Rust job allows 30 minutes and limits build concurrency to two
+jobs for the bundled DuckDB C++ build. A newer run for the same branch/PR cancels an older in-progress
 run. Jobs have explicit timeouts and a read-only repository token. Checkout does
 not persist credentials, and no repository secrets are needed.
 
@@ -27,6 +28,7 @@ root `package-lock.json`, not installed `node_modules`.
 The API tests check that the committed OpenAPI document equals the generated
 contract and that local schema references resolve. Storage tests apply the real
 embedded migration and verify reopening, checksums, constraints, and run isolation.
+Engine tests exercise YAML/graph validation and real bundled DuckDB CSV ingestion.
 No external database service is needed. CI does not deploy or publish anything.
 
 Run the equivalent checks locally from the repository root:

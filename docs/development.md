@@ -214,3 +214,6 @@ and [contributing](../CONTRIBUTING.md) before sending changes.
 T3.1 adds [persistent run/stage identity registration](run-identities.md). Use
 `prepare <pipeline.yaml> <metadata.sqlite>` to allocate pending records without
 executing stages. Full telemetry capture and history APIs follow in later tasks.
+
+T3.2–T3.3 expose per-input row counts and ordered output schemas through `run`.
+See [stage measurements](stage-measurements.md) for count and schema semantics.

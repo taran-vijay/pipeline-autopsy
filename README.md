@@ -24,6 +24,8 @@ serial scheduling, and isolated DuckDB CSV ingestion. The CLI can validate,
 plan, ingest, and run a pipeline. SQL stages execute in dependency order and
 materialize tables for downstream use. T3.1 adds durable run/stage identities
 through `prepare` (see [run identity registration](docs/run-identities.md)).
+T3.2–T3.3 capture [per-input counts and output schemas](docs/stage-measurements.md)
+for each executed stage and display them in the CLI.
 Diagnostics, full telemetry repositories, and business API handlers remain planned. The frontend still shows
 an empty runs screen. The 190-order investigation is currently a synthetic model
 test fixture. It is not yet an executable demo.

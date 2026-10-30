@@ -84,6 +84,24 @@ async fn run(args: Vec<OsString>) -> Result<(), Box<dyn std::error::Error>> {
                         output.row_count,
                         output.columns.len()
                     );
+                    if output.input_rows.is_empty() {
+                        println!("  Inputs: none (CSV source)");
+                    } else {
+                        for (input, rows) in &output.input_rows {
+                            println!("  Input {input}: {rows} rows");
+                        }
+                    }
+                    for column in &output.columns {
+                        let nullable = match column.nullable {
+                            Some(true) => "nullable",
+                            Some(false) => "not null",
+                            None => "nullability unknown",
+                        };
+                        println!(
+                            "  Column {}: {} ({nullable})",
+                            column.name, column.data_type
+                        );
+                    }
                 }
                 println!(
                     "Execution completed. Contracts were not evaluated; results are discarded on exit."

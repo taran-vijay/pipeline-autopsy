@@ -94,8 +94,9 @@ Pipeline definition + CSV/SQL files
 ```
 
 Pipeline parsing, scheduling, and materialized CSV/SQL execution are implemented.
-T3.1 registers pending run/stage identities. Execution telemetry, contract
-evaluation, and diagnosis remain planned. DuckDB owns
+T3.1 registers pending run/stage identities. T3.2–T3.3 capture per-input/output
+counts and ordered schemas in memory. Timing, persisted execution telemetry,
+contract evaluation, and diagnosis remain planned. DuckDB owns
 intermediate execution data; SQLite owns persistent metadata. Historical
 inspection should read stored records rather than rerun input queries. The
 synthetic sales fixture documents the intended 190-order diagnosis.

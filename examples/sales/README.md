@@ -15,7 +15,7 @@ cargo run -p pipeline-autopsy-cli --locked -- run examples/sales/pipeline.yaml
 
 Expected: four graph nodes, three edges, three orders, two customers. Planning
 prints `customers → orders → join_customers → daily_revenue` without executing it. The `run` command materializes all stages: the join keeps two orders and the
-aggregate produces one day with revenue 49.45. The CLI reports stage counts, while
-integration tests verify the revenue value. No contract result or finding is
+aggregate produces one day with revenue 49.45. The CLI reports per-input/output stage counts and each column's name/type,
+while integration tests verify the revenue value. No contract result or finding is
 produced yet. The session is discarded when the command exits.
 See [pipeline format](../../docs/pipeline-spec.md) for semantics and limitations.

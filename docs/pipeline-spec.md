@@ -112,7 +112,7 @@ Library entry points in `pipeline-autopsy-engine`:
 | `plan_execution(&graph)` | Deterministic topological order without execution |
 | `StageScheduler` | Completion-gated, serial stage dispatch |
 | `ExecutionSession::run(&loaded)` | Execute CSV/SQL stages and retain materialized outputs |
-| `ExecutionSession::outputs()` | Row counts and schemas in actual execution order |
+| `ExecutionSession::outputs()` | Per-input/output row counts and ordered schemas in actual execution order |
 | `SourceSession::ingest(&loaded)` | Materialize CSV sources in a new in-memory DuckDB database |
 
 ## Serial scheduling (T2.6)
@@ -199,7 +199,8 @@ controls belong to T7.7. No arbitrary-query HTTP route is exposed.
 `ExecutionSession::connection()` is available for trusted Rust inspection.
 `outputs()` reports observations at completion, not live counts after callers
 mutate tables. The CLI prints counts/schemas and drops the session on exit; it
-does not export or persist result rows.
+does not export or persist result rows. See [stage measurements](stage-measurements.md)
+for per-input count and schema semantics (T3.2–T3.3).
 
 ## CSV ingestion
 

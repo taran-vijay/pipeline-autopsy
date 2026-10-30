@@ -16,13 +16,19 @@ use crate::{
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StageOutput {
     pub stage_id: StageId,
+    /// Row counts of each declared upstream table at execution time. CSV sources
+    /// have no upstream stage inputs. These counts are not SQL scan/operator counts.
+    pub input_rows: BTreeMap<StageId, u64>,
+    /// Observed output cardinality; zero means a measured empty result.
     pub row_count: u64,
+    /// Materialized table schema in column order, including zero-row outputs.
     pub columns: Vec<ColumnSchema>,
 }
 impl From<SourceInfo> for StageOutput {
     fn from(info: SourceInfo) -> Self {
         Self {
             stage_id: info.stage_id,
+            input_rows: BTreeMap::new(),
             row_count: info.row_count,
             columns: info.columns,
         }
@@ -68,10 +74,25 @@ impl ExecutionSession {
         let mut connection = Connection::open_in_memory()?;
         let transaction = connection.transaction()?;
         let mut outputs = Vec::new();
+        // Counts are snapshotted immediately after materialization. Only completed
+        // upstream stages enter this map; scheduler completion gates consumers.
+        let mut completed_rows = BTreeMap::new();
         let mut scheduler = StageScheduler::new(loaded.graph());
         let result = scheduler.execute_with(|id| {
             let stage = stages[id];
             let path = loaded.stage_path(id).expect("loaded paths exist");
+            let input_rows = stage
+                .inputs
+                .iter()
+                .map(|input| {
+                    (
+                        input.clone(),
+                        *completed_rows
+                            .get(input)
+                            .expect("scheduler completed every input"),
+                    )
+                })
+                .collect();
             let output = match stage.operation {
                 StageOperation::CsvSource { .. } => import_csv(&transaction, id, path)?,
                 StageOperation::Sql { .. } => {
@@ -89,7 +110,10 @@ impl ExecutionSession {
                     })?
                 }
             };
-            outputs.push(StageOutput::from(output));
+            completed_rows.insert(id.clone(), output.row_count);
+            let mut output = StageOutput::from(output);
+            output.input_rows = input_rows;
+            outputs.push(output);
             Ok::<_, EngineError>(())
         });
         match result {

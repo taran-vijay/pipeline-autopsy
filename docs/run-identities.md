@@ -47,8 +47,9 @@ SELECT run_id, stage_id, status FROM stage_runs ORDER BY run_id, stage_id;
 Preparation does not execute CSV/SQL, set execution timestamps, or record metrics.
 Records remain `pending`; unmeasured counts, schemas, and timings remain NULL.
 `run` still performs an isolated, unrecorded DuckDB execution and does not consume
-prepared runs yet. Connecting lifecycle/telemetry updates to these identities
-belongs to the next instrumentation tasks. SQL/CSV file snapshots and fingerprints
+prepared runs yet. T3.2–T3.3 expose in-memory [counts and schemas](stage-measurements.md) for `run`.
+Connecting lifecycle/telemetry updates to these persistent identities follows in
+T3.4–T3.5. SQL/CSV file snapshots and fingerprints
 are also later work; only the parsed definition is currently snapshotted.
 
 ## Verification

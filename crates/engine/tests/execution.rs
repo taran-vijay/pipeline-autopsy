@@ -310,3 +310,165 @@ fn quotes_output_names_that_are_sql_keywords() {
         3
     );
 }
+
+#[test]
+fn captures_each_declared_input_count_through_join_and_aggregation() {
+    use std::collections::BTreeMap;
+    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/sales/pipeline.yaml");
+    let session = ExecutionSession::run(&load_pipeline(path).unwrap()).unwrap();
+    let outputs: BTreeMap<_, _> = session
+        .outputs()
+        .iter()
+        .map(|o| (o.stage_id.0.as_str(), o))
+        .collect();
+    assert!(outputs["orders"].input_rows.is_empty());
+    assert!(outputs["customers"].input_rows.is_empty());
+    assert_eq!(
+        outputs["join_customers"].input_rows,
+        BTreeMap::from([
+            (StageId::from("orders"), 3),
+            (StageId::from("customers"), 2),
+        ])
+    );
+    assert_eq!(outputs["join_customers"].row_count, 2);
+    assert_eq!(
+        outputs["daily_revenue"].input_rows,
+        BTreeMap::from([(StageId::from("join_customers"), 2)])
+    );
+    assert_eq!(outputs["daily_revenue"].row_count, 1);
+}
+
+#[test]
+fn zero_counts_are_measured_and_empty_outputs_keep_exact_types() {
+    use std::collections::BTreeMap;
+    let temp = tempfile::tempdir().unwrap();
+    let path = setup(
+        temp.path(),
+        "SELECT CAST(id AS DECIMAL(12,2)) AS amount, CAST(NULL AS DATE) AS day, CAST(NULL AS BOOLEAN) AS active FROM source WHERE FALSE",
+        Some("SELECT COUNT(*) AS n FROM result"),
+    );
+    let session = ExecutionSession::run(&load_pipeline(path).unwrap()).unwrap();
+    let filtered = &session.outputs()[1];
+    assert_eq!(
+        filtered.input_rows,
+        BTreeMap::from([(StageId::from("source"), 3)])
+    );
+    assert_eq!(filtered.row_count, 0);
+    assert_eq!(
+        filtered
+            .columns
+            .iter()
+            .map(|c| (c.name.as_str(), c.data_type.as_str()))
+            .collect::<Vec<_>>(),
+        [
+            ("amount", "DECIMAL(12,2)"),
+            ("day", "DATE"),
+            ("active", "BOOLEAN")
+        ]
+    );
+    let aggregate = &session.outputs()[2];
+    assert_eq!(
+        aggregate.input_rows,
+        BTreeMap::from([(StageId::from("result"), 0)])
+    );
+    assert_eq!(aggregate.row_count, 1);
+    assert_eq!(aggregate.columns[0].data_type, "BIGINT");
+}
+
+#[test]
+fn input_counts_are_table_cardinalities_not_join_scan_or_output_counts() {
+    use std::collections::BTreeMap;
+    let temp = tempfile::tempdir().unwrap();
+    let path = setup(
+        temp.path(),
+        "SELECT a.id, b.id AS other FROM source a CROSS JOIN source b",
+        None,
+    );
+    let session = ExecutionSession::run(&load_pipeline(path).unwrap()).unwrap();
+    // A repeated reference is one declared stage input, even though the result expands.
+    assert_eq!(
+        session.outputs()[1].input_rows,
+        BTreeMap::from([(StageId::from("source"), 3)])
+    );
+    assert_eq!(session.outputs()[1].row_count, 9);
+    assert_eq!(
+        session.outputs()[1]
+            .columns
+            .iter()
+            .map(|c| c.name.as_str())
+            .collect::<Vec<_>>(),
+        ["id", "other"]
+    );
+}
+
+#[test]
+fn measured_schema_preserves_aliases_order_complex_types_and_catalog_nullability() {
+    let temp = tempfile::tempdir().unwrap();
+    let path = setup(
+        temp.path(),
+        "SELECT name AS \"Name with spaces\", CAST(id AS DECIMAL(12,2)) AS amount, CAST('2026-01-01' AS DATE) AS day, id > 1 AS active, [id, id + 1] AS pair, CAST(NULL AS VARCHAR) AS missing FROM source",
+        None,
+    );
+    let session = ExecutionSession::run(&load_pipeline(path).unwrap()).unwrap();
+    let output = &session.outputs()[1];
+    assert_eq!(
+        output
+            .columns
+            .iter()
+            .map(|c| (c.name.as_str(), c.data_type.as_str()))
+            .collect::<Vec<_>>(),
+        [
+            ("Name with spaces", "VARCHAR"),
+            ("amount", "DECIMAL(12,2)"),
+            ("day", "DATE"),
+            ("active", "BOOLEAN"),
+            ("pair", "BIGINT[]"),
+            ("missing", "VARCHAR"),
+        ]
+    );
+    // Nullability describes table metadata, not a claim about observed NULL values.
+    assert!(output.columns.iter().all(|c| c.nullable == Some(true)));
+    assert_eq!(output.row_count, 3);
+}
+
+#[test]
+fn counts_and_schemas_are_snapshots_and_do_not_leak_across_runs() {
+    let temp = tempfile::tempdir().unwrap();
+    let path = setup(temp.path(), "SELECT * FROM source", None);
+    let loaded = load_pipeline(path).unwrap();
+    let first = ExecutionSession::run(&loaded).unwrap();
+    let snapshot = first.outputs().to_vec();
+    first
+        .connection()
+        .execute("DELETE FROM source", [])
+        .unwrap();
+    first
+        .connection()
+        .execute("ALTER TABLE result ADD COLUMN later BOOLEAN", [])
+        .unwrap();
+    assert_eq!(first.outputs(), snapshot);
+    fs::write(
+        temp.path().join("source.csv"),
+        "id,name,active\n7,New,true\n",
+    )
+    .unwrap();
+    let second = ExecutionSession::run(&loaded).unwrap();
+    assert_eq!(second.outputs()[1].input_rows[&StageId::from("source")], 1);
+    assert_eq!(second.outputs()[1].row_count, 1);
+    assert_eq!(
+        second.outputs()[1]
+            .columns
+            .iter()
+            .map(|c| (c.name.as_str(), c.data_type.as_str()))
+            .collect::<Vec<_>>(),
+        [("id", "BIGINT"), ("name", "VARCHAR"), ("active", "BOOLEAN")]
+    );
+    assert_eq!(first.outputs(), snapshot);
+    // A header-only source has an observed count of zero, with a measured schema.
+    fs::write(temp.path().join("source.csv"), "id,name\n").unwrap();
+    let empty = ExecutionSession::run(&loaded).unwrap();
+    assert_eq!(empty.outputs()[0].row_count, 0);
+    assert_eq!(empty.outputs()[1].input_rows[&StageId::from("source")], 0);
+    assert_eq!(empty.outputs()[1].row_count, 0);
+    assert_eq!(empty.outputs()[1].columns.len(), 2);
+}

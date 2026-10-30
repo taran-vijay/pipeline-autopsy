@@ -88,6 +88,12 @@ fn run_executes_the_sales_pipeline_and_reports_actual_counts() {
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(stdout.contains("join_customers: 2 rows, 5 columns"));
     assert!(stdout.contains("daily_revenue: 1 rows, 2 columns"));
+    assert!(stdout.contains("Input orders: 3 rows"));
+    assert!(stdout.contains("Input customers: 2 rows"));
+    assert!(stdout.contains("Input join_customers: 2 rows"));
+    assert!(stdout.contains("Inputs: none (CSV source)"));
+    assert!(stdout.contains("Column revenue:"));
+    assert!(stdout.contains("Column customer_id: BIGINT (nullable)"));
     assert!(stdout.contains("Execution completed."));
     assert!(stdout.contains("Contracts were not evaluated"));
 }
